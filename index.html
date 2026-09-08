@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Treningsverket</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="theme-color" content="#0B1420">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Treningsverket">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-void:#0B1420;
+    --panel:#132234;
+    --panel-2:#0E1B2A;
+    --line:#25415D;
+    --ink:#DCE6EE;
+    --ink-dim:#7E93A7;
+    --gold:#F2C94C;
+    --jern:#9FB1C4;
+    --grep:#D97A52;
+    --kjerne:#74B085;
+    --tur:#5CA6C9;
+    --danger:#E2604C;
+    --rare:#C9A6E8;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(var(--bg-void),var(--bg-void)),
+      repeating-linear-gradient(0deg, transparent, transparent 31px, rgba(37,65,93,0.35) 32px),
+      repeating-linear-gradient(90deg, transparent, transparent 31px, rgba(37,65,93,0.35) 32px);
+    color:var(--ink);
+    font-family:'IBM Plex Mono', monospace;
+    min-height:100vh;
+    padding:18px;
+  }
+  .wrap{max-width:1000px;margin:0 auto;}
+  .titlebar{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    border-bottom:2px solid var(--line);
+    padding-bottom:14px; margin-bottom:16px;
+    flex-wrap:wrap; gap:12px;
+  }
+  h1{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:800; font-size:40px; letter-spacing:0.5px;
+    margin:0; line-height:0.9; color:var(--ink);
+  }
+  .subtitle{color:var(--ink-dim); font-size:12px; margin-top:4px;}
+  .status-block{display:flex; gap:16px; align-items:center; flex-wrap:wrap;}
+  .readout{
+    font-family:'IBM Plex Mono', monospace; font-size:20px; font-weight:600;
+    display:flex; align-items:center; gap:7px;
+  }
+  .reactor{width:150px;}
+  .reactor-label{font-size:10px; color:var(--ink-dim); display:flex; justify-content:space-between; margin-bottom:3px; align-items:center;}
+  .reactor-bar{height:8px; background:var(--panel-2); border:1px solid var(--line); position:relative;}
+  .reactor-fill{height:100%; transition:width 0.4s ease;}
+  .pulse-dot{width:6px;height:6px;border-radius:50%;background:var(--danger);display:inline-block;margin-right:4px;animation:pulse 1.2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.25;}}
+
+  .resource-strip{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:18px;}
+  .res-card{background:var(--panel); border:1px solid var(--line); padding:10px;}
+  .res-name{font-size:11px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; gap:6px;}
+  .res-avail{font-size:22px; font-weight:600; margin:4px 0 2px;}
+  .res-total{font-size:10px; color:var(--ink-dim);}
+
+  .icon{display:inline-flex; vertical-align:middle; flex-shrink:0;}
+  .icon svg{width:100%; height:100%; display:block;}
+
+  .tabs{display:flex; gap:2px; margin-bottom:16px; flex-wrap:wrap;}
+  .tab-btn{
+    background:var(--panel-2); border:1px solid var(--line); color:var(--ink-dim);
+    font-family:'IBM Plex Mono', monospace; font-size:12px; padding:9px 14px;
+    cursor:pointer; letter-spacing:0.5px;
+  }
+  .tab-btn.active{background:var(--panel); color:var(--ink); border-bottom:2px solid var(--gold);}
+  .tab-btn:hover{color:var(--ink);}
+
+  .panel{background:var(--panel); border:1px solid var(--line); padding:20px; min-height:280px;}
+  .panel h2{
+    font-family:'Big Shoulders Display', sans-serif; font-weight:700; font-size:22px;
+    margin:0 0 14px 0; color:var(--ink); border-bottom:1px solid var(--line); padding-bottom:8px;
+  }
+  .panel h3.section{
+    font-family:'Big Shoulders Display', sans-serif; font-weight:700; font-size:17px;
+    margin:22px 0 10px; color:var(--ink); display:flex; align-items:center; gap:8px;
+  }
+  .section-note{font-size:11.5px; color:var(--ink-dim); margin:-4px 0 12px;}
+
+  label{display:block; font-size:11px; color:var(--ink-dim); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.5px;}
+  select, input[type=number], input[type=text]{
+    width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--ink);
+    font-family:'IBM Plex Mono', monospace; font-size:14px; padding:9px; margin-bottom:14px;
+  }
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .intensity-group{display:flex; gap:8px; margin-bottom:14px;}
+  .intensity-btn{
+    flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--ink-dim);
+    padding:9px; cursor:pointer; font-family:'IBM Plex Mono', monospace; font-size:12px;
+  }
+  button.primary{
+    background:var(--gold); color:var(--bg-void); border:none; padding:12px 18px;
+    font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:14px; cursor:pointer;
+    letter-spacing:0.5px;
+  }
+  button.primary:hover{opacity:0.9;}
+  button.primary:disabled{opacity:0.35; cursor:not-allowed;}
+  button.small{padding:7px 12px; font-size:12px;}
+  button.toggle{
+    background:transparent; border:1px solid var(--gold); color:var(--gold);
+    padding:7px 12px; font-family:'IBM Plex Mono', monospace; font-size:12px; cursor:pointer;
+  }
+  button.toggle.equipped{background:var(--gold); color:var(--bg-void);}
+  button.ghost{
+    background:transparent; border:1px solid var(--line); color:var(--ink-dim);
+    padding:8px 12px; font-family:'IBM Plex Mono', monospace; font-size:12px; cursor:pointer;
+  }
+  .feedback{margin-top:12px; padding:10px; background:var(--panel-2); border-left:3px solid var(--gold); font-size:13px; display:none;}
+
+  .tree-group{margin-bottom:24px;}
+  .tree-group-title{font-size:11px; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:8px; color:var(--ink-dim);}
+  .factory-row{display:flex; align-items:stretch; overflow-x:auto; padding-bottom:6px;}
+  .node{
+    border:1px solid var(--line); padding:10px 12px; background:var(--panel-2);
+    flex:1 1 140px; min-width:128px; display:flex; flex-direction:column; justify-content:center; gap:4px;
+  }
+  .node.locked{opacity:0.5; border-style:dashed;}
+  .node.unlocked{border-left:3px solid var(--gold);}
+  .node.source{background:transparent; border-style:dashed; opacity:0.85; flex:0 0 90px; align-items:center; text-align:center;}
+  .node-name{font-weight:600; font-size:12.5px; display:flex; align-items:center; gap:6px;}
+  .node-desc{font-size:10.5px; color:var(--ink-dim);}
+  .node-progress{font-size:10px; color:var(--ink-dim); margin-top:2px;}
+  .pipe{flex:0 0 22px; align-self:center; height:3px;
+    background-image:linear-gradient(90deg, var(--line) 50%, transparent 50%); background-size:9px 3px;}
+  .pipe.active{background-image:linear-gradient(90deg, var(--gold) 50%, transparent 50%); animation:flow 0.6s linear infinite;}
+  @keyframes flow{from{background-position:0 0;} to{background-position:-9px 0;}}
+
+  .hub-row{display:flex; justify-content:center; margin-top:6px;}
+  .node.hub{max-width:460px; text-align:left;}
+  .node.hub .node-name{font-size:15px;}
+
+  .quest{border:1px solid var(--line); background:var(--panel-2); padding:14px; margin-bottom:10px;}
+  .quest.done{border-left:3px solid var(--kjerne);}
+  .quest-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:10px;}
+  .quest-name{font-weight:600; font-size:14px;}
+  .quest-reward{font-size:11px; color:var(--gold); white-space:nowrap;}
+  .quest-bar{height:6px; background:var(--panel); border:1px solid var(--line); margin-top:6px;}
+  .quest-bar-fill{height:100%; background:var(--kjerne);}
+  .quest-progress-text{font-size:10px; color:var(--ink-dim); margin-top:4px;}
+
+  .market-block{border:1px solid var(--line); background:var(--panel-2); padding:14px; margin-bottom:14px;}
+  .market-block h3{font-size:13px; margin:0 0 10px 0; text-transform:uppercase; letter-spacing:0.5px; color:var(--ink-dim); display:flex; align-items:center; gap:8px; justify-content:space-between;}
+  .recipe-cost{font-size:11px; color:var(--ink-dim); margin:6px 0 10px;}
+  .recipe-cost span{margin-right:10px;}
+
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
+  .component-card{border:1px solid var(--line); background:var(--panel-2); padding:12px;}
+  .component-card .count{font-size:20px; font-weight:600; margin:4px 0;}
+
+  .module-card{border:1px solid var(--line); background:var(--panel-2); padding:14px; margin-bottom:10px;}
+  .module-card.equipped{border-left:3px solid var(--gold);}
+  .module-top{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;}
+  .slot-counter{font-size:12px; color:var(--gold); margin-bottom:14px; letter-spacing:0.5px;}
+
+  .expedition-card{border:1px solid var(--line); background:var(--panel-2); padding:14px; margin-bottom:12px;}
+  .expedition-active{border:1px solid var(--line); background:var(--panel-2); padding:12px 14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;}
+  .expedition-timer{font-size:16px; font-weight:600; color:var(--gold);}
+  .expedition-timer.ready{color:var(--kjerne);}
+
+  table{width:100%; border-collapse:collapse; font-size:12px;}
+  th,td{text-align:left; padding:6px 4px; border-bottom:1px solid var(--line);}
+  th{color:var(--ink-dim); font-weight:500; text-transform:uppercase; font-size:10px;}
+  .empty-state{color:var(--ink-dim); font-size:13px; padding:20px 0; text-align:center;}
+  .archived-note{font-size:11px; color:var(--ink-dim); margin-top:10px;}
+
+  .footer-reset{text-align:right; margin-top:14px;}
+
+  .float-gain{
+    position:fixed; left:50%; top:150px; transform:translateX(-50%);
+    font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:19px;
+    pointer-events:none; animation:floatUp 1.1s ease-out forwards; z-index:60;
+  }
+  @keyframes floatUp{0%{opacity:0; transform:translate(-50%,10px);}15%{opacity:1;}100%{opacity:0; transform:translate(-50%,-42px);}}
+
+  @media (max-width:640px){
+    .resource-strip{grid-template-columns:repeat(2,1fr);}
+    .row{grid-template-columns:1fr;}
+    .grid-2, .grid-3{grid-template-columns:1fr;}
+    h1{font-size:30px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="titlebar">
+    <div>
+      <h1>TRENINGSVERKET</h1>
+      <div class="subtitle">Produksjonsanlegg &mdash; drevet av faktisk trening</div>
+    </div>
+    <div class="status-block">
+      <div class="reactor">
+        <div class="reactor-label"><span id="reactorLabelText">REAKTOR</span><span id="reactorPct">100%</span></div>
+        <div class="reactor-bar"><div class="reactor-fill" id="reactorFill" style="width:100%; background:var(--kjerne);"></div></div>
+      </div>
+      <div class="readout" style="color:var(--gold);"><span class="icon" style="width:12px;height:12px;background:var(--gold);"></span><span id="goldAmount">0</span></div>
+      <div class="readout" style="color:var(--rare);" id="rarePartsReadout"></div>
+    </div>
+  </div>
+
+  <div class="resource-strip" id="resourceStrip"></div>
+
+  <div class="tabs">
+    <button class="tab-btn" data-tab="logg">LOGG ØKT</button>
+    <button class="tab-btn" data-tab="base">BASEN</button>
+    <button class="tab-btn" data-tab="verksted">VERKSTED</button>
+    <button class="tab-btn" data-tab="ekspedisjon">EKSPEDISJON</button>
+    <button class="tab-btn" data-tab="marked">MARKED</button>
+    <button class="tab-btn" data-tab="oppdrag">OPPDRAG</button>
+    <button class="tab-btn" data-tab="historikk">HISTORIKK</button>
+  </div>
+
+  <div class="panel" id="panelContent"></div>
+
+  <div class="footer-reset"><button class="ghost" id="resetBtn">Nullstill alt</button></div>
+</div>
+
+<script>
+const ICONS = {
+  source: '<svg viewBox="0 0 24 24"><path d="M13 2 L4 14 H11 L9 22 L20 9 H13 Z" fill="currentColor"/></svg>',
+  jern: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="9" width="3" height="6" rx="0.5"/><rect x="19.5" y="9" width="3" height="6" rx="0.5"/><rect x="5.5" y="7" width="2.2" height="10" rx="0.5"/><rect x="16.3" y="7" width="2.2" height="10" rx="0.5"/><line x1="7.7" y1="12" x2="16.3" y2="12"/></svg>',
+  grep: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 19 L9 7 L13 13 L16 8 L22 19 Z"/><circle cx="17.5" cy="4.5" r="1.6"/></svg>',
+  kjerne: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="5" cy="7" r="1.8" fill="currentColor" stroke="none"/><path d="M6.3 8.5 L17 15 M6.3 8.5 L6 14.5 M6 14.5 L3.5 19.5 M6 14.5 L10 18.5 M17 15 L20 10.5 M17 15 L17.5 20"/></svg>',
+  tur: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9.2"/><path d="M15 8.5 L12.8 12.8 L9 15.5 L11.2 11.2 Z" fill="currentColor" stroke="none"/></svg>',
+  fabrikkhall: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M2 20 V11 L7 14.5 V9 L12 12.5 V7 L17 10.5 V20 Z"/><line x1="2" y1="20" x2="21" y2="20"/></svg>',
+  rareParts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 2 L20 9 L12 22 L4 9 Z"/><path d="M4 9 H20 M12 2 L9 9 M12 2 L15 9 M9 9 L12 22 M15 9 L12 22"/></svg>',
+  module: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 9 H20 M4 15 H20 M9 4 V20 M15 4 V20"/></svg>',
+  component: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2 V5 M12 19 V22 M2 12 H5 M19 12 H22 M5 5 L7 7 M17 17 L19 19 M19 5 L17 7 M5 19 L7 17"/></svg>',
+  expedition: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 20 L9 4 H15 L20 20 Z"/><line x1="7.5" y1="14" x2="16.5" y2="14"/></svg>',
+};
+
+function iconSpan(key, size, colorOverride){
+  size = size || 16;
+  const color = colorOverride || (key === 'source' || key === 'fabrikkhall' || key === 'module' ? 'var(--gold)' : key === 'rareParts' ? 'var(--rare)' : key === 'expedition' ? 'var(--ink-dim)' : key === 'component' ? 'var(--ink-dim)' : (RESOURCE_DEFS[key] ? RESOURCE_DEFS[key].color : 'var(--ink-dim)'));
+  return `<span class="icon" style="width:${size}px;height:${size}px;color:${color}">${ICONS[key] || ''}</span>`;
+}
+
+const RESOURCE_DEFS = {
+  jern:   { label:'Jern',   sub:'Styrke',       color:'var(--jern)' },
+  grep:   { label:'Grep',   sub:'Klatring',     color:'var(--grep)' },
+  kjerne: { label:'Kjerne', sub:'Calisthenics', color:'var(--kjerne)' },
+  tur:    { label:'Tur',    sub:'Utendørs',     color:'var(--tur)' },
+};
+
+const SESSION_TYPES = [
+  { id:'styrke_klatreverket', label:'Styrke – Klatreverket styrkerom', resource:'jern' },
+  { id:'styrke_hjemme', label:'Enkel styrke – hjemme', resource:'jern' },
+  { id:'klatring', label:'Klatring – Klatreverket', resource:'grep' },
+  { id:'calisthenics_matte', label:'Calisthenics – kjerne (matte)', resource:'kjerne' },
+  { id:'calisthenics_hjul', label:'Calisthenics – ab-hjul', resource:'kjerne' },
+  { id:'calisthenics_kropp', label:'Calisthenics – kroppsvekt (annet)', resource:'kjerne' },
+  { id:'ute', label:'Utendørs (skriv inn hva)', resource:'tur' },
+];
+
+const BUILDINGS = {
+  jern: [
+    { id:'jern1', name:'Manualstativ', desc:'+5% Jern per økt', threshold:25 },
+    { id:'jern2', name:'Smie', desc:'Låser opp Tungløft-oppdrag', threshold:75 },
+    { id:'jern3', name:'Stålverk', desc:'+1 Gull per fullført oppdrag', threshold:150 },
+  ],
+  grep: [
+    { id:'grep1', name:'Klatrevegg-modul', desc:'+5% Grep per økt', threshold:20 },
+    { id:'grep2', name:'Tau-lager', desc:'Låser opp vanskeligere oppdrag', threshold:60 },
+    { id:'grep3', name:'Klatretårn', desc:'Reaktor tåler 1 ekstra dag før forfall', threshold:120 },
+  ],
+  kjerne: [
+    { id:'kjerne1', name:'Kjernegenerator', desc:'+5% Kjerne per økt', threshold:20 },
+    { id:'kjerne2', name:'Reaktorkjerne', desc:'Skjold: beskytter 1 tapt dag/uke', threshold:60 },
+    { id:'kjerne3', name:'Fusjonskammer', desc:'+1 ekstra ukentlig oppdrag', threshold:120 },
+  ],
+  tur: [
+    { id:'tur1', name:'Utpost', desc:'+5% Tur per økt', threshold:20 },
+    { id:'tur2', name:'Kartleggingsstasjon', desc:'Låser opp nytt kartområde', threshold:60 },
+    { id:'tur3', name:'Ekspedisjonsbase', desc:'Bonus Gull for variasjon i aktivitet', threshold:120 },
+  ],
+};
+
+const FABRIKKHALL = { id:'fabrikkhall', name:'Fabrikkhall', threshold:200 };
+
+const RECIPES = [
+  { id:'ekspedisjonsutstyr', name:'Ekspedisjonsutstyr', desc:'+3% på all ressursproduksjon (permanent, stakker)', cost:{jern:20, grep:20}, maxCrafts:3, icon:'jern' },
+  { id:'feltrasjon', name:'Feltrasjon', desc:'Reaktor forfaller 20% saktere (permanent, stakker)', cost:{kjerne:15, tur:15}, maxCrafts:2, icon:'kjerne' },
+  { id:'mesterverktoy', name:'Mesterverktøy', desc:'+1 ekstra Gull per fullført oppdrag (permanent, stakker)', cost:{jern:10, grep:10, kjerne:10, tur:10}, maxCrafts:3, icon:'fabrikkhall' },
+];
+
+const COMPONENTS = [
+  { id:'klatrejern', name:'Klatrejern', cost:{jern:15, grep:15} },
+  { id:'kjernebelte', name:'Kjernebelte', cost:{jern:15, kjerne:15} },
+  { id:'terrengrigg', name:'Terrengrigg', cost:{jern:15, tur:15} },
+  { id:'fjellutstyr', name:'Fjellutstyr', cost:{grep:15, tur:15} },
+  { id:'balanseapparat', name:'Balanseapparat', cost:{grep:15, kjerne:15} },
+  { id:'feltpakke', name:'Feltpakke', cost:{kjerne:15, tur:15} },
+];
+
+const MODULE_SLOTS = 3;
+const MODULES = [
+  { id:'ekspedisjonsdrakt', name:'Ekspedisjonsdrakt', desc:'+8% på all ressursproduksjon', cost:{klatrejern:2, fjellutstyr:2}, effect:{mult:0.08} },
+  { id:'utholdenhetskjerne', name:'Utholdenhetskjerne', desc:'Reaktor forfaller 35% saktere', cost:{kjernebelte:2, feltpakke:2}, effect:{reactorReduction:0.35} },
+  { id:'taktisk_modul', name:'Taktisk Modul', desc:'+2 Gull per fullført oppdrag', cost:{terrengrigg:2, balanseapparat:2}, effect:{goldPerChallenge:2} },
+  { id:'presisjonsgrep', name:'Presisjonsgrep', desc:'Grep-bygninger krever 15% mindre', cost:{klatrejern:3, balanseapparat:1}, effect:{thresholdReduction:{grep:0.15}} },
+  { id:'jernvilje', name:'Jernvilje', desc:'Jern-bygninger krever 15% mindre', cost:{kjernebelte:3, terrengrigg:1}, effect:{thresholdReduction:{jern:0.15}} },
+  { id:'feltmester', name:'Feltmester', desc:'Ekspedisjoner gir 20% mer i retur', cost:{feltpakke:3, fjellutstyr:1, rareParts:3}, effect:{expeditionBonus:0.20} },
+];
+
+const EXPEDITIONS = [
+  { id:'kort', name:'Kort ekspedisjon', hours:6, costAmount:15, yieldMin:8, yieldMax:14, rareChance:0.4, rareMin:1, rareMax:1 },
+  { id:'middels', name:'Middels ekspedisjon', hours:16, costAmount:30, yieldMin:20, yieldMax:30, rareChance:0.7, rareMin:1, rareMax:2 },
+  { id:'lang', name:'Lang ekspedisjon', hours:36, costAmount:50, yieldMin:35, yieldMax:55, rareChance:1.0, rareMin:2, rareMax:3 },
+];
+const MAX_ACTIVE_EXPEDITIONS = 2;
+
+const CHALLENGE_POOL = [
+  { id:'kjerne_x3', desc:'Logg 3 calisthenics-økter denne uken', metric:'count', resource:'kjerne', target:3, rewardGold:12, rewardResource:{kjerne:10} },
+  { id:'klatring_x2', desc:'Logg 2 klatreøkter denne uken', metric:'count', resource:'grep', target:2, rewardGold:12, rewardResource:{grep:10} },
+  { id:'jern_20', desc:'Samle 20 Jern-poeng denne uken', metric:'sum', resource:'jern', target:20, rewardGold:15, rewardResource:{jern:8} },
+  { id:'tur_15', desc:'Samle 15 Tur-poeng denne uken (uansett aktivitet)', metric:'sum', resource:'tur', target:15, rewardGold:15, rewardResource:{tur:8} },
+  { id:'fullt_hus', desc:'Logg minst én økt av hver ressurstype denne uken', metric:'variety', target:4, rewardGold:25, rewardResource:{} },
+  { id:'jern_x2', desc:'Logg 2 styrkeøkter denne uken', metric:'count', resource:'jern', target:2, rewardGold:10, rewardResource:{jern:8} },
+];
+
+let state = null;
+let activeTab = 'logg';
+let selectedType = SESSION_TYPES[0].id;
+let selectedIntensity = 'middels';
+let countdownInterval = null;
+
+function defaultState(){
+  const resources = {};
+  Object.keys(RESOURCE_DEFS).forEach(k => resources[k] = { total:0, available:0 });
+  return {
+    resources, gold:0, lastLogISO:null, reactor:100,
+    history:[], unlocked:[], weekKey:null, challenges:[],
+    crafted:{}, archivedSummary:{ sessions:0, byResource:{jern:0,grep:0,kjerne:0,tur:0} },
+    components:{}, modulesOwned:{}, modulesEquipped:[], rareParts:0, expeditions:[],
+  };
+}
+
+function isoWeekKey(d){
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - dayNum + 3);
+  const firstThursday = new Date(Date.UTC(date.getUTCFullYear(),0,4));
+  const week = 1 + Math.round(((date - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay()+6)%7)) / 7);
+  return date.getUTCFullYear() + '-W' + week;
+}
+
+function pickWeeklyChallenges(weekKey){
+  const num = parseInt(weekKey.split('-W')[1], 10) || 1;
+  const i1 = num % CHALLENGE_POOL.length;
+  let i2 = (num + 3) % CHALLENGE_POOL.length;
+  if(i2 === i1) i2 = (i2 + 1) % CHALLENGE_POOL.length;
+  return [i1, i2].map(i => ({ ...CHALLENGE_POOL[i], progress:0, completed:false }));
+}
+
+async function loadState(){
+  try{
+    const raw = localStorage.getItem('treningsverket_state');
+    state = raw ? JSON.parse(raw) : defaultState();
+  }catch(e){ state = defaultState(); }
+  // migration for saves from earlier versions
+  state.crafted = state.crafted || {};
+  state.archivedSummary = state.archivedSummary || { sessions:0, byResource:{jern:0,grep:0,kjerne:0,tur:0} };
+  state.components = state.components || {};
+  state.modulesOwned = state.modulesOwned || {};
+  state.modulesEquipped = state.modulesEquipped || [];
+  state.rareParts = state.rareParts || 0;
+  state.expeditions = state.expeditions || [];
+  Object.keys(RESOURCE_DEFS).forEach(k => { if(!state.resources[k]) state.resources[k] = {total:0, available:0}; });
+  ensureWeek();
+  applyReactorDecay();
+  render();
+  if(countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => { if(activeTab === 'ekspedisjon') render(); }, 30000);
+}
+
+async function saveState(){
+  try{ localStorage.setItem('treningsverket_state', JSON.stringify(state)); }
+  catch(e){ console.error('Lagring feilet', e); }
+}
+
+function ensureWeek(){
+  const wk = isoWeekKey(new Date());
+  if(state.weekKey !== wk){ state.weekKey = wk; state.challenges = pickWeeklyChallenges(wk); }
+}
+
+function getEquippedEffects(){
+  const eff = { mult:0, reactorReduction:0, goldPerChallenge:0, thresholdReduction:{jern:0,grep:0,kjerne:0,tur:0}, expeditionBonus:0 };
+  state.modulesEquipped.forEach(id => {
+    const m = MODULES.find(x => x.id === id);
+    if(!m) return;
+    if(m.effect.mult) eff.mult += m.effect.mult;
+    if(m.effect.reactorReduction) eff.reactorReduction += m.effect.reactorReduction;
+    if(m.effect.goldPerChallenge) eff.goldPerChallenge += m.effect.goldPerChallenge;
+    if(m.effect.expeditionBonus) eff.expeditionBonus += m.effect.expeditionBonus;
+    if(m.effect.thresholdReduction){
+      Object.entries(m.effect.thresholdReduction).forEach(([res,val]) => { eff.thresholdReduction[res] += val; });
+    }
+  });
+  return eff;
+}
+
+function applyReactorDecay(){
+  if(!state.lastLogISO){ state.reactor = 100; return; }
+  const days = Math.floor((Date.now() - new Date(state.lastLogISO).getTime()) / 86400000);
+  const graceDays = state.unlocked.includes('grep3') ? 2 : 1;
+  const oldReduction = 0.2 * ((state.crafted && state.crafted.feltrasjon) || 0);
+  const eff = getEquippedEffects();
+  const totalReduction = Math.min(0.7, oldReduction + eff.reactorReduction);
+  const decayPerDay = 15 * (1 - totalReduction);
+  const idle = Math.max(0, days - graceDays);
+  state.reactor = Math.max(20, Math.round(100 - idle * decayPerDay));
+}
+
+function buildingMultiplier(resource){
+  let mult = 1;
+  BUILDINGS[resource].forEach(b => { if(state.unlocked.includes(b.id) && b.desc.indexOf('+5%') !== -1) mult += 0.05; });
+  return mult;
+}
+
+function getTotalProductionMultiplier(){
+  const oldMult = 0.03 * ((state.crafted && state.crafted.ekspedisjonsutstyr) || 0);
+  const eff = getEquippedEffects();
+  return 1 + oldMult + eff.mult;
+}
+
+function computeGain(minutes, intensity, resource){
+  const intMult = intensity === 'lett' ? 0.8 : intensity === 'hardt' ? 1.3 : 1.0;
+  const base = Math.max(1, Math.round((minutes / 5) * intMult));
+  return Math.round(base * buildingMultiplier(resource) * getTotalProductionMultiplier());
+}
+
+function checkBuildingUnlocks(){
+  const newly = [];
+  const eff = getEquippedEffects();
+  Object.keys(BUILDINGS).forEach(res => {
+    const reduction = eff.thresholdReduction[res] || 0;
+    BUILDINGS[res].forEach(b => {
+      const effectiveThreshold = Math.round(b.threshold * (1 - reduction));
+      if(!state.unlocked.includes(b.id) && state.resources[res].total >= effectiveThreshold){
+        state.unlocked.push(b.id); newly.push(b.name);
+      }
+    });
+  });
+  if(!state.unlocked.includes('fabrikkhall')){
+    const sum = Object.values(state.resources).reduce((a,r) => a + r.total, 0);
+    if(sum >= FABRIKKHALL.threshold){ state.unlocked.push('fabrikkhall'); newly.push('Fabrikkhall — Verksted er åpnet!'); }
+  }
+  return newly;
+}
+
+function updateChallengeProgress(resource, gained){
+  const eff = getEquippedEffects();
+  state.challenges.forEach(c => {
+    if(c.completed) return;
+    if(c.metric === 'count' && c.resource === resource) c.progress += 1;
+    if(c.metric === 'sum' && c.resource === resource) c.progress += gained;
+    if(c.metric === 'variety'){
+      c._seen = c._seen || [];
+      if(c._seen.indexOf(resource) === -1) c._seen.push(resource);
+      c.progress = c._seen.length;
+    }
+    if(c.progress >= c.target){
+      c.completed = true;
+      const mesterCount = (state.crafted && state.crafted.mesterverktoy) || 0;
+      state.gold += c.rewardGold + (state.unlocked.includes('jern3') ? 1 : 0) + mesterCount + eff.goldPerChallenge;
+      Object.entries(c.rewardResource || {}).forEach(([r, amt]) => {
+        state.resources[r].available += amt; state.resources[r].total += amt;
+      });
+    }
+  });
+}
+
+function trimHistory(){
+  if(state.history.length > 150){
+    const overflow = state.history.slice(150);
+    overflow.forEach(h => {
+      state.archivedSummary.sessions += 1;
+      state.archivedSummary.byResource[h.resource] += h.gained;
+    });
+    state.history = state.history.slice(0, 150);
+  }
+}
+
+function logSession(typeId, minutes, intensity, label){
+  const type = SESSION_TYPES.find(t => t.id === typeId);
+  const gained = computeGain(minutes, intensity, type.resource);
+  state.resources[type.resource].total += gained;
+  state.resources[type.resource].available += gained;
+  state.lastLogISO = new Date().toISOString();
+  state.reactor = 100;
+  state.history.unshift({ date: state.lastLogISO, type: type.label, minutes, intensity, resource: type.resource, gained, label: label || null });
+  trimHistory();
+  const unlocked = checkBuildingUnlocks();
+  updateChallengeProgress(type.resource, gained);
+  saveState(); render();
+  return { gained, resourceKey: type.resource, resourceLabel: RESOURCE_DEFS[type.resource].label, unlocked };
+}
+
+function convertResource(from, to, amount){
+  if(amount <= 0 || state.resources[from].available < amount) return false;
+  const got = Math.floor(amount * 0.33);
+  state.resources[from].available -= amount;
+  state.resources[to].available += got;
+  saveState(); render();
+  return got;
+}
+
+function buyBoost(resource, cost, amount){
+  if(state.gold < cost) return false;
+  state.gold -= cost;
+  state.resources[resource].available += amount;
+  saveState(); render();
+  return true;
+}
+
+function craftRecipe(id){
+  const recipe = RECIPES.find(r => r.id === id);
+  const count = (state.crafted[id] || 0);
+  if(count >= recipe.maxCrafts) return 'max';
+  for(const [res, amt] of Object.entries(recipe.cost)){
+    if(state.resources[res].available < amt) return 'insufficient';
+  }
+  Object.entries(recipe.cost).forEach(([res, amt]) => { state.resources[res].available -= amt; });
+  state.crafted[id] = count + 1;
+  saveState(); render();
+  return 'ok';
+}
+
+function craftComponent(id){
+  const comp = COMPONENTS.find(c => c.id === id);
+  for(const [res, amt] of Object.entries(comp.cost)){
+    if(state.resources[res].available < amt) return 'insufficient';
+  }
+  Object.entries(comp.cost).forEach(([res, amt]) => { state.resources[res].available -= amt; });
+  state.components[id] = (state.components[id] || 0) + 1;
+  saveState(); render();
+  return 'ok';
+}
+
+function getStock(key){
+  return key === 'rareParts' ? state.rareParts : (state.components[key] || 0);
+}
+function spendStock(key, amt){
+  if(key === 'rareParts') state.rareParts -= amt; else state.components[key] -= amt;
+}
+
+function craftModule(id){
+  const mod = MODULES.find(m => m.id === id);
+  if(state.modulesOwned[id]) return 'owned';
+  for(const [key, amt] of Object.entries(mod.cost)){
+    if(getStock(key) < amt) return 'insufficient';
+  }
+  Object.entries(mod.cost).forEach(([key, amt]) => spendStock(key, amt));
+  state.modulesOwned[id] = true;
+  saveState(); render();
+  return 'ok';
+}
+
+function toggleEquip(id){
+  const idx = state.modulesEquipped.indexOf(id);
+  if(idx !== -1){ state.modulesEquipped.splice(idx, 1); }
+  else{
+    if(state.modulesEquipped.length >= MODULE_SLOTS) return 'full';
+    state.modulesEquipped.push(id);
+  }
+  saveState(); render();
+  return 'ok';
+}
+
+function dispatchExpedition(expTypeId, resource){
+  if(state.expeditions.length >= MAX_ACTIVE_EXPEDITIONS) return 'full';
+  const exp = EXPEDITIONS.find(e => e.id === expTypeId);
+  if(state.resources[resource].available < exp.costAmount) return 'insufficient';
+  state.resources[resource].available -= exp.costAmount;
+  state.expeditions.push({
+    uid: Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    expType: expTypeId, resource, startedAt: Date.now(), durationMs: exp.hours * 3600000,
+  });
+  saveState(); render();
+  return 'ok';
+}
+
+function collectExpedition(uid){
+  const idx = state.expeditions.findIndex(e => e.uid === uid);
+  if(idx === -1) return null;
+  const e = state.expeditions[idx];
+  if(Date.now() - e.startedAt < e.durationMs) return 'notready';
+  const def = EXPEDITIONS.find(x => x.id === e.expType);
+  const eff = getEquippedEffects();
+  const bonusMult = 1 + eff.expeditionBonus;
+  const yieldAmt = Math.round((def.yieldMin + Math.random() * (def.yieldMax - def.yieldMin)) * bonusMult);
+  state.resources[e.resource].available += yieldAmt;
+  let rareGained = 0;
+  if(Math.random() < def.rareChance){
+    rareGained = Math.max(def.rareMin, Math.round((def.rareMin + Math.random() * (def.rareMax - def.rareMin)) * bonusMult));
+    state.rareParts += rareGained;
+  }
+  state.expeditions.splice(idx, 1);
+  saveState(); render();
+  return { yieldAmt, resource: e.resource, rareGained };
+}
+
+function spawnFloatingGain(text, color){
+  const el = document.createElement('div');
+  el.className = 'float-gain';
+  el.style.color = color;
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1150);
+}
+
+function formatRemaining(ms){
+  if(ms <= 0) return 'Klar!';
+  const totalMin = Math.ceil(ms / 60000);
+  const hours = Math.floor(totalMin / 60);
+  const min = totalMin % 60;
+  return hours > 0 ? `${hours}t ${min}m` : `${min}m`;
+}
+
+// ---------- RENDER ----------
+
+function render(){
+  document.getElementById('goldAmount').textContent = state.gold;
+  document.getElementById('rarePartsReadout').innerHTML = iconSpan('rareParts',13) + ' ' + state.rareParts;
+  const pct = state.reactor;
+  document.getElementById('reactorPct').textContent = pct + '%';
+  const fill = document.getElementById('reactorFill');
+  fill.style.width = pct + '%';
+  fill.style.background = pct > 60 ? 'var(--kjerne)' : pct > 35 ? 'var(--gold)' : 'var(--danger)';
+  document.getElementById('reactorLabelText').innerHTML = (pct < 60 ? '<span class="pulse-dot"></span>' : '') + 'REAKTOR';
+
+  const strip = document.getElementById('resourceStrip');
+  strip.innerHTML = Object.entries(RESOURCE_DEFS).map(([key, def]) => `
+    <div class="res-card">
+      <div class="res-name">${iconSpan(key,14)}${def.label} · ${def.sub}</div>
+      <div class="res-avail">${state.resources[key].available}</div>
+      <div class="res-total">totalt: ${state.resources[key].total}</div>
+    </div>
+  `).join('');
+
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === activeTab));
+
+  const panel = document.getElementById('panelContent');
+  if(activeTab === 'logg') panel.innerHTML = renderLogg();
+  if(activeTab === 'base') panel.innerHTML = renderBase();
+  if(activeTab === 'verksted') panel.innerHTML = renderVerksted();
+  if(activeTab === 'ekspedisjon') panel.innerHTML = renderEkspedisjon();
+  if(activeTab === 'marked') panel.innerHTML = renderMarked();
+  if(activeTab === 'oppdrag') panel.innerHTML = renderOppdrag();
+  if(activeTab === 'historikk') panel.innerHTML = renderHistorikk();
+
+  attachPanelHandlers();
+}
+
+function renderLogg(){
+  const typeOptions = SESSION_TYPES.map(t => `<option value="${t.id}" ${t.id===selectedType?'selected':''}>${t.label}</option>`).join('');
+  const showLabelField = selectedType === 'ute';
+  return `
+    <h2>Logg ny økt</h2>
+    <label>Type</label>
+    <select id="typeSelect">${typeOptions}</select>
+    ${showLabelField ? `<label>Hvilken aktivitet?</label><input type="text" id="activityLabel" placeholder="f.eks. sykkeltur, tur i marka, uteklatring">` : ''}
+    <div class="row">
+      <div>
+        <label>Varighet (minutter)</label>
+        <input type="number" id="minutesInput" value="30" min="5" step="5">
+      </div>
+      <div>
+        <label>Intensitet</label>
+        <div class="intensity-group">
+          <button class="intensity-btn ${selectedIntensity==='lett'?'active':''}" data-int="lett" style="${selectedIntensity==='lett'?'background:var(--ink-dim);color:var(--bg-void)':''}">Lett</button>
+          <button class="intensity-btn ${selectedIntensity==='middels'?'active':''}" data-int="middels" style="${selectedIntensity==='middels'?'background:var(--gold);color:var(--bg-void)':''}">Middels</button>
+          <button class="intensity-btn ${selectedIntensity==='hardt'?'active':''}" data-int="hardt" style="${selectedIntensity==='hardt'?'background:var(--danger);color:var(--bg-void)':''}">Hardt</button>
+        </div>
+      </div>
+    </div>
+    <button class="primary" id="logBtn">Registrer økt</button>
+    <div class="feedback" id="feedbackBox"></div>
+  `;
+}
+
+function renderBase(){
+  const groups = Object.entries(BUILDINGS).map(([res, list]) => {
+    const def = RESOURCE_DEFS[res];
+    const total = state.resources[res].total;
+    let prevUnlocked = true;
+    const tierNodes = list.map(b => {
+      const unlocked = state.unlocked.includes(b.id);
+      const pipeActive = prevUnlocked;
+      prevUnlocked = unlocked;
+      return `<div class="pipe ${pipeActive?'active':''}"></div>
+        <div class="node ${unlocked?'unlocked':'locked'}">
+          <div class="node-name">${iconSpan(res,15)}${b.name}</div>
+          <div class="node-desc">${b.desc}</div>
+          <div class="node-progress">${unlocked ? 'LÅST OPP' : total + ' / ' + b.threshold}</div>
+        </div>`;
+    }).join('');
+    return `
+      <div class="tree-group">
+        <div class="tree-group-title">${iconSpan(res,14)}${def.label}-linje &middot; ${def.sub}</div>
+        <div class="factory-row">
+          <div class="node source">${iconSpan('source',18)}<div class="node-desc">Trening</div></div>
+          ${tierNodes}
+        </div>
+      </div>`;
+  }).join('');
+
+  const sum = Object.values(state.resources).reduce((a,r) => a + r.total, 0);
+  const hubUnlocked = state.unlocked.includes('fabrikkhall');
+  const hub = `
+    <div class="hub-row">
+      <div class="node hub ${hubUnlocked?'unlocked':'locked'}">
+        <div class="node-name">${iconSpan('fabrikkhall',20)}Fabrikkhall</div>
+        <div class="node-desc">${hubUnlocked ? 'Åpen — se Verksted og Ekspedisjon-fanene' : 'Krever ' + FABRIKKHALL.threshold + ' ressurspoeng totalt, på tvers av alle linjer'}</div>
+        <div class="node-progress">${hubUnlocked ? 'ÅPEN' : sum + ' / ' + FABRIKKHALL.threshold}</div>
+      </div>
+    </div>`;
+
+  return `<h2>Basen</h2>${groups}${hub}`;
+}
+
+function renderVerksted(){
+  const hubUnlocked = state.unlocked.includes('fabrikkhall');
+  if(!hubUnlocked){
+    const sum = Object.values(state.resources).reduce((a,r) => a + r.total, 0);
+    return `
+      <h2>Verksted</h2>
+      <div class="empty-state">
+        Verkstedet krever at Fabrikkhallen er bygget (${sum} / ${FABRIKKHALL.threshold} ressurspoeng totalt).<br>
+        Der kan du senere kombinere ressurser fra flere linjer til komponenter og permanente moduler.
+      </div>`;
+  }
+
+  const basicCards = RECIPES.map(r => {
+    const count = state.crafted[r.id] || 0;
+    const maxed = count >= r.maxCrafts;
+    const costStr = Object.entries(r.cost).map(([res,amt]) => `<span>${iconSpan(res,12)} ${amt} ${RESOURCE_DEFS[res].label}</span>`).join('');
+    return `
+      <div class="market-block">
+        <h3>${iconSpan(r.icon,16)}${r.name} <span style="color:var(--ink-dim); font-weight:400;">(${count}/${r.maxCrafts})</span></h3>
+        <div class="node-desc" style="margin-bottom:8px;">${r.desc}</div>
+        <div class="recipe-cost">${costStr}</div>
+        <button class="primary small" data-recipe="${r.id}" ${maxed?'disabled':''}>${maxed ? 'Maks nådd' : 'Kombiner'}</button>
+      </div>`;
+  }).join('');
+
+  const componentCards = COMPONENTS.map(c => {
+    const owned = state.components[c.id] || 0;
+    const costStr = Object.entries(c.cost).map(([res,amt]) => `${iconSpan(res,11)} ${amt}`).join(' + ');
+    return `
+      <div class="component-card">
+        <div class="node-name">${iconSpan('component',14)}${c.name}</div>
+        <div class="count">${owned}</div>
+        <div class="recipe-cost" style="margin:4px 0 8px;">${costStr}</div>
+        <button class="primary small" data-component="${c.id}">Lag</button>
+      </div>`;
+  }).join('');
+
+  const slotsUsed = state.modulesEquipped.length;
+  const moduleCards = MODULES.map(m => {
+    const owned = !!state.modulesOwned[m.id];
+    const equipped = state.modulesEquipped.includes(m.id);
+    const costStr = Object.entries(m.cost).map(([key,amt]) => `<span>${iconSpan(key,12)} ${amt} ${key==='rareParts'?'Sjeldne Deler':(COMPONENTS.find(c=>c.id===key)||{}).name}</span>`).join('');
+    return `
+      <div class="module-card ${equipped?'equipped':''}">
+        <div class="module-top">
+          <div>
+            <div class="node-name">${iconSpan('module',16)}${m.name}</div>
+            <div class="node-desc" style="margin:4px 0;">${m.desc}</div>
+            ${!owned ? `<div class="recipe-cost">${costStr}</div>` : ''}
+          </div>
+          <div>
+            ${owned
+              ? `<button class="toggle ${equipped?'equipped':''}" data-equip="${m.id}">${equipped ? 'Utstyrt' : (slotsUsed>=MODULE_SLOTS ? 'Plassene fulle' : 'Utstyr')}</button>`
+              : `<button class="primary small" data-module="${m.id}">Kombiner</button>`}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <h2>Verksted</h2>
+    <div class="section-note">Bruker tilgjengelige ressurser (ikke totalen — Basen påvirkes ikke).</div>
+
+    <h3 class="section">${iconSpan('fabrikkhall',16)}Grunnoppgraderinger</h3>
+    ${basicCards}
+
+    <h3 class="section">${iconSpan('component',16)}Komponenter</h3>
+    <div class="section-note">Kombiner to råressurser til et mellomprodukt. Ingen grense — lag så mange du trenger til modulene under.</div>
+    <div class="grid-3">${componentCards}</div>
+
+    <h3 class="section">${iconSpan('module',16)}Moduler — ${slotsUsed}/${MODULE_SLOTS} plasser i bruk</h3>
+    <div class="section-note">Du kan eie alle, men kun ${MODULE_SLOTS} kan være aktive samtidig. Bytt fritt etter hva du trener mest på.</div>
+    ${moduleCards}
+    <div class="feedback" id="craftFeedback"></div>
+  `;
+}
+
+function renderEkspedisjon(){
+  const hubUnlocked = state.unlocked.includes('fabrikkhall');
+  if(!hubUnlocked){
+    return `<h2>Ekspedisjon</h2><div class="empty-state">Krever Fabrikkhallen (se Basen-fanen).</div>`;
+  }
+  const resOptions = Object.entries(RESOURCE_DEFS).map(([k,d]) => `<option value="${k}">${d.label}</option>`).join('');
+  const cards = EXPEDITIONS.map(e => `
+    <div class="expedition-card">
+      <h3 style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:8px;">${iconSpan('expedition',16)}${e.name} — ${e.hours}t</h3>
+      <div class="node-desc" style="margin-bottom:10px;">Koster ${e.costAmount} av valgt ressurs. Gir ${e.yieldMin}–${e.yieldMax} tilbake, ${Math.round(e.rareChance*100)}% sjanse på ${e.rareMin}–${e.rareMax} Sjeldne Deler.</div>
+      <div class="row">
+        <select id="expRes_${e.id}">${resOptions}</select>
+        <button class="primary small" data-dispatch="${e.id}">Send</button>
+      </div>
+    </div>
+  `).join('');
+
+  const active = state.expeditions.map(exp => {
+    const remaining = exp.startedAt + exp.durationMs - Date.now();
+    const ready = remaining <= 0;
+    const def = EXPEDITIONS.find(x => x.id === exp.expType);
+    return `
+      <div class="expedition-active">
+        <div>
+          <div class="node-name">${iconSpan(exp.resource,15)}${def.name} — ${RESOURCE_DEFS[exp.resource].label}</div>
+          <div class="node-desc">Sendt for ${def.costAmount} ${RESOURCE_DEFS[exp.resource].label}</div>
+        </div>
+        <div class="expedition-timer ${ready?'ready':''}">${formatRemaining(remaining)}</div>
+        <button class="primary small" data-collect="${exp.uid}" ${ready?'':'disabled'}>${ready?'Hent':'Venter'}</button>
+      </div>`;
+  }).join('');
+
+  return `
+    <h2>Ekspedisjon</h2>
+    <div class="section-note">Send ressurser ut på oppdrag i ekte klokketid. Kom tilbake senere for å hente gevinsten.</div>
+    <h3 class="section">Aktive ekspedisjoner (${state.expeditions.length}/${MAX_ACTIVE_EXPEDITIONS})</h3>
+    ${active || '<div class="empty-state">Ingen ute akkurat nå.</div>'}
+    <h3 class="section">Send ny ekspedisjon</h3>
+    ${cards}
+    <div class="feedback" id="expFeedback"></div>
+  `;
+}
+
+function renderMarked(){
+  const resOptions = Object.entries(RESOURCE_DEFS).map(([k,d]) => `<option value="${k}">${d.label}</option>`).join('');
+  return `
+    <h2>Marked</h2>
+    <div class="market-block">
+      <h3>Konverter ressurs (kurs 3:1, kun tilgjengelig-pool)</h3>
+      <div class="row">
+        <div><label>Fra</label><select id="convFrom">${resOptions}</select></div>
+        <div><label>Til</label><select id="convTo">${resOptions}</select></div>
+      </div>
+      <label>Mengde å bruke</label>
+      <input type="number" id="convAmount" value="9" min="3" step="3">
+      <button class="primary" id="convBtn">Konverter</button>
+      <div class="feedback" id="convFeedback"></div>
+    </div>
+    <div class="market-block">
+      <h3>Joker-økt (kjøp med Gull)</h3>
+      <p style="font-size:12px;color:var(--ink-dim);margin-top:0;">Gir +10 tilgjengelig av valgt ressurs. Teller ikke mot Basen — kun ekte trening bygger den.</p>
+      <label>Ressurs</label>
+      <select id="boostRes">${resOptions}</select>
+      <button class="primary" id="boostBtn">Kjøp for 15 Gull</button>
+      <div class="feedback" id="boostFeedback"></div>
+    </div>
+  `;
+}
+
+function renderOppdrag(){
+  if(!state.challenges.length) return `<h2>Oppdrag</h2><div class="empty-state">Ingen aktive oppdrag.</div>`;
+  const rows = state.challenges.map(c => {
+    const pct = Math.min(100, Math.round((c.progress / c.target) * 100));
+    return `
+      <div class="quest ${c.completed?'done':''}">
+        <div class="quest-top">
+          <div class="quest-name">${c.desc}</div>
+          <div class="quest-reward">${c.completed ? 'FULLFØRT' : c.rewardGold + ' gull'}</div>
+        </div>
+        <div class="quest-bar"><div class="quest-bar-fill" style="width:${pct}%"></div></div>
+        <div class="quest-progress-text">${Math.min(c.progress,c.target)} / ${c.target}</div>
+      </div>`;
+  }).join('');
+  return `<h2>Ukentlige oppdrag (${state.weekKey})</h2>${rows}`;
+}
+
+function renderHistorikk(){
+  let archivedNote = '';
+  if(state.archivedSummary.sessions > 0){
+    const s = state.archivedSummary;
+    archivedNote = `<div class="archived-note">+ ${s.sessions} eldre økter arkivert (Jern ${s.byResource.jern}, Grep ${s.byResource.grep}, Kjerne ${s.byResource.kjerne}, Tur ${s.byResource.tur})</div>`;
+  }
+  if(!state.history.length) return `<h2>Historikk</h2><div class="empty-state">Ingen økter logget ennå.</div>`;
+  const rows = state.history.slice(0, 30).map(h => `
+    <tr>
+      <td>${new Date(h.date).toLocaleDateString('no-NO')}</td>
+      <td>${h.type}${h.label ? ' — ' + h.label : ''}</td>
+      <td>${h.minutes} min</td>
+      <td>${h.intensity}</td>
+      <td>+${h.gained}</td>
+    </tr>`).join('');
+  return `
+    <h2>Historikk</h2>
+    <table>
+      <tr><th>Dato</th><th>Type</th><th>Varighet</th><th>Intensitet</th><th>Poeng</th></tr>
+      ${rows}
+    </table>
+    ${archivedNote}`;
+}
+
+function attachPanelHandlers(){
+  document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => { activeTab = b.dataset.tab; render(); });
+
+  const typeSelect = document.getElementById('typeSelect');
+  if(typeSelect) typeSelect.onchange = e => { selectedType = e.target.value; render(); };
+
+  document.querySelectorAll('.intensity-btn').forEach(b => b.onclick = () => { selectedIntensity = b.dataset.int; render(); });
+
+  const logBtn = document.getElementById('logBtn');
+  if(logBtn) logBtn.onclick = () => {
+    const minutes = parseInt(document.getElementById('minutesInput').value, 10) || 0;
+    const labelField = document.getElementById('activityLabel');
+    const label = labelField ? labelField.value.trim() : null;
+    if(minutes <= 0) return;
+    const result = logSession(selectedType, minutes, selectedIntensity, label);
+    spawnFloatingGain('+' + result.gained + ' ' + result.resourceLabel, RESOURCE_DEFS[result.resourceKey].color);
+    const box = document.getElementById('feedbackBox');
+    if(box){
+      let msg = `+${result.gained} ${result.resourceLabel}. Reaktor ladet til 100%.`;
+      if(result.unlocked.length) msg += ` Nytt: ${result.unlocked.join(', ')}!`;
+      box.textContent = msg; box.style.display = 'block';
+    }
+  };
+
+  const convBtn = document.getElementById('convBtn');
+  if(convBtn) convBtn.onclick = () => {
+    const from = document.getElementById('convFrom').value;
+    const to = document.getElementById('convTo').value;
+    const amount = parseInt(document.getElementById('convAmount').value, 10) || 0;
+    const fb = document.getElementById('convFeedback');
+    if(from === to){ fb.textContent = 'Velg to ulike ressurser.'; fb.style.display='block'; return; }
+    const got = convertResource(from, to, amount);
+    fb.textContent = got === false ? 'Ikke nok tilgjengelig ' + RESOURCE_DEFS[from].label + '.' : `Konvertert til +${got} ${RESOURCE_DEFS[to].label}.`;
+    fb.style.display = 'block';
+  };
+
+  const boostBtn = document.getElementById('boostBtn');
+  if(boostBtn) boostBtn.onclick = () => {
+    const res = document.getElementById('boostRes').value;
+    const fb = document.getElementById('boostFeedback');
+    const ok = buyBoost(res, 15, 10);
+    fb.textContent = ok ? `Kjøpt +10 tilgjengelig ${RESOURCE_DEFS[res].label}.` : 'Ikke nok Gull.';
+    fb.style.display = 'block';
+  };
+
+  document.querySelectorAll('[data-recipe]').forEach(btn => btn.onclick = () => {
+    const result = craftRecipe(btn.dataset.recipe);
+    const fb = document.getElementById('craftFeedback');
+    if(!fb) return;
+    fb.textContent = result === 'ok' ? 'Kombinert!' : result === 'max' ? 'Denne er allerede maks nivå.' : 'Ikke nok tilgjengelige ressurser.';
+    fb.style.display = 'block';
+  });
+
+  document.querySelectorAll('[data-component]').forEach(btn => btn.onclick = () => {
+    const result = craftComponent(btn.dataset.component);
+    const fb = document.getElementById('craftFeedback');
+    if(!fb) return;
+    fb.textContent = result === 'ok' ? 'Komponent laget!' : 'Ikke nok tilgjengelige ressurser.';
+    fb.style.display = 'block';
+  });
+
+  document.querySelectorAll('[data-module]').forEach(btn => btn.onclick = () => {
+    const result = craftModule(btn.dataset.module);
+    const fb = document.getElementById('craftFeedback');
+    if(!fb) return;
+    fb.textContent = result === 'ok' ? 'Modul bygget! Utstyr den for å ta den i bruk.' : result === 'owned' ? 'Du eier allerede denne.' : 'Mangler komponenter eller Sjeldne Deler.';
+    fb.style.display = 'block';
+  });
+
+  document.querySelectorAll('[data-equip]').forEach(btn => btn.onclick = () => {
+    const result = toggleEquip(btn.dataset.equip);
+    const fb = document.getElementById('craftFeedback');
+    if(fb && result === 'full'){ fb.textContent = 'Alle plasser er fulle — fjern en modul først.'; fb.style.display = 'block'; }
+  });
+
+  document.querySelectorAll('[data-dispatch]').forEach(btn => btn.onclick = () => {
+    const expId = btn.dataset.dispatch;
+    const res = document.getElementById('expRes_' + expId).value;
+    const result = dispatchExpedition(expId, res);
+    const fb = document.getElementById('expFeedback');
+    if(!fb) return;
+    fb.textContent = result === 'ok' ? 'Ekspedisjon sendt av gårde.' : result === 'full' ? 'Maks ' + MAX_ACTIVE_EXPEDITIONS + ' ekspedisjoner samtidig.' : 'Ikke nok tilgjengelig ressurs.';
+    fb.style.display = 'block';
+  });
+
+  document.querySelectorAll('[data-collect]').forEach(btn => btn.onclick = () => {
+    const result = collectExpedition(btn.dataset.collect);
+    const fb = document.getElementById('expFeedback');
+    if(!fb || !result || result === 'notready') return;
+    let msg = `Hentet +${result.yieldAmt} ${RESOURCE_DEFS[result.resource].label}`;
+    if(result.rareGained) msg += ` og +${result.rareGained} Sjeldne Deler`;
+    fb.textContent = msg + '.'; fb.style.display = 'block';
+  });
+}
+
+document.getElementById('resetBtn').onclick = async () => {
+  if(!confirm('Nullstille all fremgang?')) return;
+  state = defaultState();
+  ensureWeek();
+  await saveState();
+  render();
+};
+
+loadState();
+</script>
+</body>
+</html>
