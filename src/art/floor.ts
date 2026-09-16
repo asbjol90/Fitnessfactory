@@ -65,7 +65,6 @@ ${gearCluster(W - 34, roomTop + 60, 14)}
 ${gearCluster(W - 30, rampartY - 40, 11)}
 <rect x="0" y="${rampartY - 6}" width="${W}" height="5" fill="url(#p-grate)"/>
 <rect x="0" y="${rampartY - 6}" width="${W}" height="1" fill="var(--steel)"/>
-<rect x="${corridorX + 12}" y="${roomTop + 40}" width="3" height="${lineY - roomTop - 44}" fill="url(#p-hazard)" opacity=".8"/>
 <text transform="translate(${corridorX + 26} ${roomTop + 120}) rotate(90)" class="wall-text" style="fill:var(--ink-dim);font-size:9px">SHIPPING LANE</text>
 ${g.stock ? loadingZone(g.stock) : ''}
 <rect x="0" y="${lineY - 4}" width="${W}" height="${bandH + 4}" fill="url(#p-brick)"/>
