@@ -37,7 +37,7 @@ export function renderDefence(s: State): Node {
     fighting && controls(s, fight!),
     !pr && hint(s),
     !pr && roster(s),
-    !pr && wallCard(s),
+    wallCard(s, !!pr),
     !pr && wavePreview(s),
   );
 }
@@ -53,33 +53,42 @@ function banner(s: State, f: Fight): Node {
   return h('div.notice.danger.row.between', h('span', h('b', `Tick ${f.tick}`), ` · ${alive} raider${alive === 1 ? '' : 's'} on the field`), h('span.dim.small', f.wallHp > 0 ? `gate ${f.wallHp} HP` : ''));
 }
 
+const live: { svg: SVGSVGElement | null; key: string } = { svg: null, key: '' };
+
 function field(s: State): Node {
+  const f = s.pendingRaid?.fight ?? null;
+  const fighting = !!f && f.tick > 0 && !f.done;
+  const key = `${s.wall}|${JSON.stringify(s.turretCells)}|${s.pendingRaid?.seed ?? 0}`;
+  if (fighting && live.svg && live.key === key) {
+    // Same field, new tick: move things instead of rebuilding, so CSS transitions carry the motion.
+    const el = live.svg;
+    requestAnimationFrame(() => patchField(el, s));
+    return el;
+  }
+  const el = buildField(s);
+  live.svg = el; live.key = key;
+  return el;
+}
+
+function buildField(s: State): SVGSVGElement {
   const road = pathOf(s);
   const roadSet = new Set(road.map(cellIndex));
   const f = s.pendingRaid?.fight ?? null;
   const parts: string[] = [];
   const wallMax = wallDef(s.wall).hp;
 
-  // Cells
   for (let i = 0; i < GRID_COLS * GRID_ROWS; i++) {
     const { x, y } = cellXY(i);
     const c = cellFromIndex(i);
-    if (c.r === GATE.r) parts.push(i === cellIndex(GATE) ? gateCell(x, y, wallMax ? (f ? f.wallHp : wallMax) / wallMax : -1) : wallCell(x, y));
+    if (c.r === GATE.r) parts.push(i === cellIndex(GATE) ? gateCell(x, y, wallMax ? (f ? f.wallHp : wallMax) / wallMax : -1).replace('fill="var(--ok)"', 'fill="var(--ok)" id="gate-hp"') : wallCell(x, y));
     else if (roadSet.has(i)) parts.push(roadCell(x, y));
     else parts.push(fieldCell(x, y));
   }
-  // Entry arrow
   const entry = cellXY(cellIndex(road[0]!));
   parts.push(`<path d="M${entry.x + CELL / 2 - 8} ${entry.y + 6} l8 10 l8 -10" fill="none" stroke="var(--danger)" stroke-width="3"/>`);
 
-  // Mode overlays
-  if (!f && ui.mode === 'place') {
-    const range = ui.pick ? TURRET_COMBAT[s.turrets[ui.pick]?.def ?? 'scrap_launcher'].range : 0;
-    for (let i = 0; i < GRID_COLS * GRID_ROWS; i++) if (placeable(s, i)) { const { x, y } = cellXY(i); parts.push(placeableMark(x, y, !!ui.pick)); }
-    void range;
-  }
+  if (!f && ui.mode === 'place') for (let i = 0; i < GRID_COLS * GRID_ROWS; i++) if (placeable(s, i)) { const { x, y } = cellXY(i); parts.push(placeableMark(x, y, !!ui.pick)); }
   if (!f && ui.mode === 'barricade') for (let i = 0; i < GRID_COLS * GRID_ROWS; i++) if (barricadeable(s, i)) { const { x, y } = cellXY(i); parts.push(placeableMark(x, y, true)); }
-  // Range of the picked / tapped turret
   const showRangeFor = ui.pick && s.turretCells[ui.pick] !== undefined ? ui.pick : null;
   if (showRangeFor) {
     const at = cellFromIndex(s.turretCells[showRangeFor]!);
@@ -87,50 +96,114 @@ function field(s: State): Node {
     for (const rc of road) if (chebyshev(at, rc) <= r) { const { x, y } = cellXY(cellIndex(rc)); parts.push(rangeMark(x, y)); }
   }
 
-  // Barricades
-  for (const b of s.barricades) { const { x, y } = cellXY(b.cell); parts.push(barricadeArt(x, y, b.hp / BARRICADE.hp)); }
-
-  // Turrets (rotate toward last target)
-  const lastShots = f?.last.shots ?? [];
+  parts.push('<g id="barricades">');
+  for (const b of s.barricades) { const { x, y } = cellXY(b.cell); parts.push(`<g data-barricade="${b.cell}">${barricadeArt(x, y, b.hp / BARRICADE.hp)}</g>`); }
+  parts.push('</g><g id="turrets">');
   for (const [iid, cell] of Object.entries(s.turretCells)) {
     const t = s.turrets[iid]; if (!t) continue;
     const { x, y } = cellXY(cell);
-    const shot = lastShots.find(sh => sh.turretIid === iid);
-    if (shot && f) {
-      const target = f.raiders.find(r => r.id === shot.targetId);
-      if (target) { const tp = raiderXY(road, target); const cc = center(cell); ui.angles[iid] = Math.atan2(tp.y - cc.y, tp.x - cc.x) * 180 / Math.PI; }
-    } else if (ui.angles[iid] === undefined) ui.angles[iid] = -90;
-    parts.push(`<g data-turret="${iid}" class="${shot ? 'firing' : ''}">${turretTop(t.def, x, y, ui.angles[iid]!, !!shot && (t.def === 'minigun' || t.def === 'double_minigun'))}` +
-      `<text x="${x + CELL / 2}" y="${y + CELL - 2}" text-anchor="middle" class="node-sub" style="font-size:9px">${t.ammo}</text></g>`);
+    if (ui.angles[iid] === undefined) ui.angles[iid] = -90;
+    parts.push(`<g data-turret="${iid}">${turretTop(t.def, x, y, ui.angles[iid]!, false)}` +
+      `<text data-ammo="${iid}" x="${x + CELL / 2}" y="${y + CELL - 2}" text-anchor="middle" class="node-sub" style="font-size:9px">${t.ammo}</text></g>`);
   }
-
-  // Tracers for last tick
-  if (f) for (const sh of lastShots) {
-    const cell = s.turretCells[sh.turretIid]; const target = f.raiders.find(r => r.id === sh.targetId);
-    if (cell === undefined || !target) continue;
-    const a = center(cell), b = raiderXY(road, target);
-    parts.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--flame)" stroke-width="2" class="tracer"/>`);
-  }
-  // Rally flash
-  if (f && f.last.rally > 0) { const g = center(cellIndex(GATE)); parts.push(`<circle cx="${g.x}" cy="${g.y - CELL}" r="${CELL * 0.9}" fill="var(--hazard)" class="tracer" opacity=".35"/>`); }
-
-  // Raiders
+  parts.push('</g><g id="fx"></g><g id="raiders">');
   if (f) for (const r of f.raiders) {
     if (!r.alive || r.pos < 0) continue;
     const p = raiderXY(road, r);
-    parts.push(`<g class="raider-g${r.breached ? ' breached' : ''}" style="transform:translate(${p.x}px,${p.y}px)">${raiderTop(r.type, 0, 0, r.hp / r.maxHp)}</g>`);
+    parts.push(`<g data-raider="${r.id}" class="raider-g${r.breached ? ' breached' : ''}" style="transform:translate(${p.x}px,${p.y}px)">${raiderTop(r.type, 0, 0, r.hp / r.maxHp)}</g>`);
   }
-  // Kills this tick: a puff where they fell
-  if (f) for (const id of f.last.kills) {
-    const r = f.raiders.find(x => x.id === id); if (!r) continue;
-    const p = raiderXY(road, r);
-    parts.push(`<g class="anim-smoke" style="transform-origin:${p.x}px ${p.y}px"><circle cx="${p.x}" cy="${p.y}" r="9" fill="var(--smoke)"/></g>`);
-  }
+  parts.push('</g>');
 
   const el = svg(`<svg class="field" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${floorDefs()}${parts.join('')}</svg>`) as SVGSVGElement;
   el.addEventListener('click', e => onFieldTap(e, s));
+  if (f && f.tick > 0) requestAnimationFrame(() => patchField(el, s));
   return el;
 }
+
+/** Apply one tick's changes to a live field: positions, HP, barrels, tracers, puffs. */
+function patchField(el: SVGSVGElement, s: State): void {
+  const f = s.pendingRaid?.fight; if (!f) return;
+  const road = pathOf(s);
+  const NS = 'http://www.w3.org/2000/svg';
+  const fx = el.querySelector('#fx')!, raidersLayer = el.querySelector('#raiders')!;
+
+  // Raiders: create newcomers, move the rest, fade the dead.
+  for (const r of f.raiders) {
+    let g = el.querySelector(`[data-raider="${r.id}"]`) as SVGGElement | null;
+    if (r.pos < 0) continue;
+    const p = raiderXY(road, r);
+    if (!g && r.alive) {
+      g = document.createElementNS(NS, 'g') as SVGGElement;
+      g.setAttribute('data-raider', String(r.id)); g.setAttribute('class', 'raider-g');
+      g.innerHTML = raiderTop(r.type, 0, 0, r.hp / r.maxHp);
+      g.style.transform = `translate(${p.x}px,${p.y}px)`;
+      g.style.opacity = '0';
+      raidersLayer.append(g);
+      requestAnimationFrame(() => { g!.style.opacity = '1'; });
+      continue;
+    }
+    if (!g) continue;
+    if (!r.alive) {
+      if (!g.classList.contains('dying')) {
+        g.classList.add('dying');
+        const puff = document.createElementNS(NS, 'g'); puff.setAttribute('class', 'anim-smoke'); puff.style.transformOrigin = `${p.x}px ${p.y}px`;
+        puff.innerHTML = `<circle cx="${p.x}" cy="${p.y}" r="9" fill="var(--smoke)"/>`; fx.append(puff);
+        setTimeout(() => { g?.remove(); puff.remove(); }, 700);
+      }
+      continue;
+    }
+    g.style.transform = `translate(${p.x}px,${p.y}px)`;
+    g.classList.toggle('breached', r.breached);
+    const bars = g.querySelectorAll('rect');
+    const hpBar = bars[bars.length - 1]; if (hpBar) hpBar.setAttribute('width', String(parseFloat(bars[bars.length - 2]!.getAttribute('width')!) * Math.max(0, r.hp / r.maxHp)));
+  }
+
+  // Turrets: rotate toward target, flash, ammo count.
+  for (const [iid, cell] of Object.entries(s.turretCells)) {
+    const g = el.querySelector(`[data-turret="${iid}"]`) as SVGGElement | null; if (!g) continue;
+    const shot = f.last.shots.find(sh => sh.turretIid === iid);
+    if (shot) {
+      const target = f.raiders.find(r => r.id === shot.targetId);
+      if (target) { const tp = raiderXY(road, target); const cc = center(cell); ui.angles[iid] = Math.atan2(tp.y - cc.y, tp.x - cc.x) * 180 / Math.PI; }
+      g.classList.remove('firing'); void (g as unknown as HTMLElement).offsetWidth; g.classList.add('firing');
+      const def = s.turrets[iid]?.def;
+      if (def === 'minigun' || def === 'double_minigun') g.querySelectorAll('.barrel g').forEach(b => b.classList.add('anim-spin'));
+    } else {
+      g.classList.remove('firing');
+      g.querySelectorAll('.barrel g').forEach(b => b.classList.remove('anim-spin'));
+    }
+    const barrel = g.querySelector('.barrel') as SVGGElement | null;
+    if (barrel) barrel.style.transform = `rotate(${ui.angles[iid] ?? -90}deg)`;
+    const ammo = el.querySelector(`[data-ammo="${iid}"]`); if (ammo) ammo.textContent = String(s.turrets[iid]?.ammo ?? 0);
+  }
+
+  // Tracers and rally flash (short-lived).
+  for (const sh of f.last.shots) {
+    const cell = s.turretCells[sh.turretIid]; const target = f.raiders.find(r => r.id === sh.targetId);
+    if (cell === undefined || !target) continue;
+    const a = center(cell), b = raiderXY(road, target);
+    const line = document.createElementNS(NS, 'line');
+    line.setAttribute('x1', String(a.x)); line.setAttribute('y1', String(a.y)); line.setAttribute('x2', String(b.x)); line.setAttribute('y2', String(b.y));
+    line.setAttribute('stroke', 'var(--flame)'); line.setAttribute('stroke-width', '2'); line.setAttribute('class', 'tracer');
+    fx.append(line); setTimeout(() => line.remove(), 450);
+  }
+  if (f.last.rally > 0) {
+    const gp = center(cellIndex(GATE));
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', String(gp.x)); c.setAttribute('cy', String(gp.y - CELL)); c.setAttribute('r', String(CELL * 0.9)); c.setAttribute('fill', 'var(--hazard)'); c.setAttribute('opacity', '.35'); c.setAttribute('class', 'tracer');
+    fx.append(c); setTimeout(() => c.remove(), 450);
+  }
+
+  // Gate + barricades.
+  const gate = el.querySelector('#gate-hp'); const wallMax = wallDef(s.wall).hp;
+  if (gate && wallMax) gate.setAttribute('width', String((CELL - 20) * Math.max(0, f.wallHp / wallMax)));
+  for (const b of Array.from(el.querySelectorAll('[data-barricade]'))) {
+    const cell = Number((b as HTMLElement).dataset.barricade); const live = s.barricades.find(x => x.cell === cell);
+    if (!live) { b.remove(); continue; }
+    const bars = b.querySelectorAll('rect'); const bar = bars[bars.length - 1]; if (bar) bar.setAttribute('width', String(32 * Math.max(0, live.hp / BARRICADE.hp)));
+  }
+}
+
 /** Raider world position: interpolated along the road; breachers sit inside the gate. */
 function raiderXY(road: ReturnType<typeof pathOf>, r: Raider): { x: number; y: number } {
   if (r.breached) { const g = center(cellIndex(GATE)); return { x: g.x, y: g.y + 4 }; }
@@ -185,13 +258,14 @@ function roster(s: State): Node {
       }));
 }
 
-function wallCard(s: State): Node {
+export function wallCard(s: State, locked = false): Node {
   const wall = wallDef(s.wall);
   const next = s.wall < 3 ? WALLS[s.wall]! : null;
   return h('div.card.stack',
     h('div.row.between', h('div', h('h3', wall.name), h('div.dim.small', `${wall.blurb} ${wall.hp ? `Gate ${wall.hp} HP.` : ''} Barricades: ${s.barricades.length}/${wall.barricades}.`)),
-      next && h('button.btn.sm', { onclick: () => act({ type: 'upgrade_wall' }) }, `→ ${next.name}`)),
+      next && h('button.btn.sm', { disabled: locked, onclick: () => act({ type: 'upgrade_wall' }) }, `→ ${next.name}`)),
     next && costChips(s, { res: next.cost, gold: next.gold }),
+    locked && h('p.small.c-strength', 'Not with raiders at the gate.'),
     h('p.dim.small', `A barricade costs ${BARRICADE.labor} Labor + 4 Stone, has ${BARRICADE.hp} HP, and stands until raiders break it. Rally costs ${RALLY.labor} Labor per use, hits for ${RALLY.damage} at the gate, and needs ${RALLY.cooldown} ticks to recover.`));
 }
 
@@ -235,15 +309,21 @@ function controls(s: State, f: Fight): Node {
 }
 
 function result(s: State, o: RaidOutcome): Node {
-  const loss = o.loss?.kind === 'steal' ? `They carried off ${o.loss.amount} ${RESOURCES[o.loss.resource].name}.`
-    : o.loss?.kind === 'turret' ? `They wrecked a ${TURRETS[o.loss.def].name}.`
-    : o.loss?.kind === 'building' ? `They wrecked your ${o.loss.def.replace(/_/g, ' ')}.` : '';
+  const loss = lossText(o);
   return h(`div.card.stack`, { style: { borderLeft: `3px solid ${o.repelled ? 'var(--ok)' : 'var(--danger)'}` } },
     h('h2', o.repelled ? 'Repelled' : 'Breached'),
     h('p', o.repelled ? `All ${o.killed} down in ${o.ticks} ticks.` : `${o.breached} got through in ${o.ticks} ticks; ${o.killed} didn't. ${loss}`),
     o.repelled && Object.keys(o.drops).length > 0 && h('div', h('div.dim.small', 'They were carrying:'), bagChips(o.drops)),
     o.gearDrop && h('p.c-gold', `And a piece of gear: ${o.gearDrop} tier ${s.avatar.gear[o.gearDrop]}.`),
     h('button.btn.primary.block', { onclick: () => { act({ type: 'raid_tick', rally: false }); } }, 'Back to work'));
+}
+
+export function lossText(o: RaidOutcome): string {
+  if (!o.losses.length) return 'They found nothing worth taking.';
+  return o.losses.map(l => l.kind === 'steal' ? `carried off ${l.amount} ${RESOURCES[l.resource].name}`
+    : l.kind === 'turret' ? `wrecked a ${TURRETS[l.def].name}`
+    : l.kind === 'building' ? `wrecked your ${l.def.replace(/_/g, ' ')}`
+    : `tore down ${l.count} barricade${l.count > 1 ? 's' : ''}`).join(', ').replace(/^./, c => c.toUpperCase()) + '.';
 }
 
 export function raidPendingSheet(): void {

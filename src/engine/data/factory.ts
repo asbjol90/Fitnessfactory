@@ -100,16 +100,16 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     id: 'munitions_press', name: 'Munitions Press', floor: 'main',
     cost: cost({ iron: 12, stone: 10 }, 0, 15), drain: 2,
     recipes: [
-      { id: 'cartridges', name: 'Press Cartridges', inputs: { iron: 2, coke: 1 }, output: { cartridges: 6 }, labor: 2, energy: 2 },
-      { id: 'hardened', name: 'Harden Rounds', inputs: { cartridges: 2, precision_components: 1 }, output: { hardened_rounds: 6 }, labor: 3, energy: 3 },
+      { id: 'cartridges', name: 'Press Cartridges', inputs: { iron: 2, coke: 1 }, output: { cartridges: 12 }, labor: 2, energy: 2 },
+      { id: 'hardened', name: 'Harden Rounds', inputs: { cartridges: 2, precision_components: 1 }, output: { hardened_rounds: 12 }, labor: 3, energy: 3 },
     ],
     gate: { kind: 'none' },
     upgrades: [
       { id: 'heavy', name: 'Heavy Press', tagline: 'Alloy Rounds for the Double Minigun', cost: cost({ precision_components: 2, iron: 20 }, 60), drain: 3,
         recipes: [
-          { id: 'cartridges', name: 'Press Cartridges', inputs: { iron: 2, coke: 1 }, output: { cartridges: 6 }, labor: 2, energy: 2 },
-          { id: 'hardened', name: 'Harden Rounds', inputs: { cartridges: 2, precision_components: 1 }, output: { hardened_rounds: 6 }, labor: 3, energy: 3 },
-          { id: 'alloy', name: 'Alloy Rounds', inputs: { hardened_rounds: 4, reinforced_alloy: 1 }, output: { alloy_rounds: 8 }, labor: 4, energy: 5 },
+          { id: 'cartridges', name: 'Press Cartridges', inputs: { iron: 2, coke: 1 }, output: { cartridges: 12 }, labor: 2, energy: 2 },
+          { id: 'hardened', name: 'Harden Rounds', inputs: { cartridges: 2, precision_components: 1 }, output: { hardened_rounds: 12 }, labor: 3, energy: 3 },
+          { id: 'alloy', name: 'Alloy Rounds', inputs: { hardened_rounds: 4, reinforced_alloy: 1 }, output: { alloy_rounds: 16 }, labor: 4, energy: 5 },
         ] },
     ],
   },

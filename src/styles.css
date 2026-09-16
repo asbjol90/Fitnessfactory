@@ -215,9 +215,12 @@ main { flex: 1; padding: 14px 12px calc(var(--tab-h) + var(--safe-b) + 16px); }
 
 /* ---------- defence ---------- */
 .field { width: 100%; height: auto; background: var(--bg); border-radius: var(--radius); border: 1px solid var(--line); touch-action: pan-y; user-select: none; }
-.field .raider-g { transition: transform .55s linear; }
+.field .raider-g { transition: transform .68s linear, opacity .3s; }
+.field .raider-g.dying { opacity: 0; transition: opacity .4s; }
+.field .raider-g rect { transition: width .3s; }
+.field #gate-hp, .field [data-barricade] rect:last-child { transition: width .3s; }
 .field .raider-g.breached { opacity: .6; }
-.field .tracer { animation: tracer .45s ease-out forwards; }
+.field .tracer { animation: tracer .45s ease-out forwards; pointer-events: none; }
 @keyframes tracer { 0% { opacity: 1; } 100% { opacity: 0; } }
 .field .firing .muzzle path { animation: muzzle .25s ease-out; }
 @keyframes muzzle { 0% { opacity: 1; transform: scale(1.3); } 100% { opacity: 0; transform: scale(.8); } }

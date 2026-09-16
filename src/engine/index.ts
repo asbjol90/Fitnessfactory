@@ -12,4 +12,4 @@ export { freshRaid } from './raids';
 export { GameError } from './errors';
 export { migrateV1, loadState, upgradeSave } from './migrate';
 export * from './data/defence';
-export { pathOf, isPathCell, isWallCell, placeable, barricadeable, type Fight, type Raider, type PendingRaid, type RaidOutcome, type TickLog } from './defence';
+export { pathOf, isPathCell, isWallCell, placeable, barricadeable, type Fight, type Raider, type PendingRaid, type RaidOutcome, type RaidLoss, type TickLog } from './defence';

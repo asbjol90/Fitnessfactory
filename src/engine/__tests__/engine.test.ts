@@ -64,7 +64,9 @@ describe('raids (tower defence)', () => {
     s = { ...s, res: { ...s.res, iron_ore: 40 } };
     s = fightOut(s, rng);
     expect(s.pendingRaid?.fight.done?.repelled).toBe(false);
-    expect(s.raidHistory[0]!.outcome.loss?.kind).toBe('steal');
+    expect(s.raidHistory[0]!.outcome.losses.some(l => l.kind === 'steal')).toBe(true);
+    expect(s.raidHistory[0]!.outcome.breached).toBe(4); // nothing to wreck in an empty factory, so only grabs
+
     // Acknowledging the finished fight clears it; loot runs are open again.
     s = reduce(s, { type: 'raid_tick', rally: false }, { now: T0, rng }).state;
     expect(s.pendingRaid).toBeNull();
@@ -384,11 +386,11 @@ describe('round 1 mechanics', () => {
     s = run(s, rng, [{ type: 'build', building: 'munitions_press' }, { type: 'build_turret', turret: 'assault_rifle' }]);
     const press = Object.values(s.buildings).find(b => b.def === 'munitions_press')!;
     s = run(s, rng, [{ type: 'produce', iid: press.iid, recipe: 'cartridges', units: 3 }]);
-    expect(s.res.cartridges).toBe(18);
+    expect(s.res.cartridges).toBe(36);
     const t = Object.values(s.turrets)[0]!;
     s = run(s, rng, [{ type: 'load_ammo', iid: t.iid }]);
     expect(s.turrets[t.iid]!.ammo).toBe(10);
-    expect(s.res.cartridges).toBe(8);
+    expect(s.res.cartridges).toBe(26);
     s = run(s, rng, [{ type: 'research', tech: 'conveyor_systems' }]);
     const wrong = reduce(s, { type: 'add_conveyor', from: { kind: 'stock' }, to: { kind: 'turret', iid: t.iid }, resource: 'coke' }, { now: T0, rng: () => 0 });
     expect(wrong.error).toMatch(/fires Cartridges/);

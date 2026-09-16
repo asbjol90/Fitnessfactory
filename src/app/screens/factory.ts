@@ -5,6 +5,7 @@ import { buildingArt, raidArt, solarArt, traderArt, turretArt } from '../../art/
 import { go } from '../main';
 import { belt, beltItems, emptyPad, environment, floorDefs, pad, stockRack } from '../../art/floor';
 import { isBuildingId, isTurretId, openBuildingInfo, openTurretInfo } from './info';
+import { lossText, wallCard } from './defence';
 import {
   BUILDINGS, BUILDING_IDS, C, INFRA, RESOURCES, SOLAR_PANEL, TURRETS, TURRET_COMBAT, TURRET_IDS, ZONES,
   activeDrain, activeRecipes, beltCapacity, beltUpgradeCost, buildingBlocker, buildingLabel, dailyEnergyBalance, factorySize, freshRaid, hasTech, haulingLabor, nextFactorySize,
@@ -117,7 +118,8 @@ export function renderFactory(s: State): Node {
   const belts = s.conveyors.map((c, i) => beltMarkup(c, nodes, stale.has(c.id), i, lineY)).join('');
   // Belts render above the environment but below the nodes.
   const env = parts.shift()!;
-  const floor = svg(`<svg class="floor" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${floorDefs()}${env}${belts}${parts.join('')}</svg>`) as SVGSVGElement;
+  const wallHit = `<g data-node="wall"><rect x="0" y="${lineY - 10}" width="${W}" height="30" class="node-hit"/></g>`;
+  const floor = svg(`<svg class="floor" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${floorDefs()}${env}${wallHit}${belts}${parts.join('')}</svg>`) as SVGSVGElement;
   floor.addEventListener('click', e => onFloorTap(e, s));
   longPress(floor, target => {
     const g = target.closest('[data-slot]') as HTMLElement | null;
@@ -196,7 +198,7 @@ function beltMarkup(c: Conveyor, nodes: Placed[], stale: boolean, idx: number, l
   const d = rounded(pts, 10);
   const id = `belt${idx}`;
   void lineY;
-  return `<g class="belt-g" data-belt="${c.id}">${belt(d, id, stale, c.tier)}${beltItems(id, c.resource, beltCapacity(c))}</g>`;
+  return `<g class="belt-g" data-belt="${c.id}">${belt(d, id, stale, c.tier)}${beltItems(id, c.resource, beltCapacity(c))}<path d="${d}" fill="none" stroke="transparent" stroke-width="26" stroke-linecap="round" style="cursor:pointer"/></g>`;
 }
 /** Polyline with rounded corners. */
 function rounded(pts: Array<[number, number]>, r: number): string {
@@ -230,8 +232,9 @@ function hint(): Node | null {
 }
 
 function onFloorTap(e: Event, s: State): void {
-  const g = (e.target as Element).closest('[data-slot],[data-node]') as HTMLElement | null;
+  const g = (e.target as Element).closest('[data-slot],[data-node],[data-belt]') as HTMLElement | null;
   if (!g) return;
+  if (g.dataset.belt && ui.mode === 'view') { openBeltSheet(g.dataset.belt); return; }
   const slot = g.dataset.slot !== undefined ? Number(g.dataset.slot) : null;
   const fixed = g.dataset.node;
 
@@ -253,6 +256,7 @@ function onFloorTap(e: Event, s: State): void {
   }
   if (fixed === 'raid') { if (s.pendingRaid && !s.pendingRaid.fight.done) { go('defence'); return; } const fr = freshRaid(s); if (fr) markSeen(fr.at); openRaidHistory(); return; }
   if (fixed === 'stock') { openStockSheet(); return; }
+  if (fixed === 'wall') { sheet(() => wallCard(s, !!s.pendingRaid && !s.pendingRaid.fight.done)); return; }
   if (fixed === 'trader') { go('trade'); return; }
   if (slot === null) return;
   const entry = s.slots[slot];
@@ -404,6 +408,21 @@ const STOCK_GROUPS: Array<{ tier: ResourceTier; title: string; blurb: string }> 
   { tier: 'refined', title: 'Refined', blurb: 'Made here. Build with it or sell it.' },
   { tier: 'ammo', title: 'Ammunition', blurb: 'For the wall.' },
 ];
+function openBeltSheet(id: string): void {
+  liveSheet(close => {
+    const s = store.state;
+    const c = s.conveyors.find(x => x.id === id);
+    if (!c) { close(); return h('div'); }
+    const cost = beltUpgradeCost(c);
+    return h('div.stack',
+      h('div.row', icon(c.resource, 28), h('div', h('h2', `Belt · ${RESOURCES[c.resource].name}`), h('div.dim.small', `${nodeName(s, c.from)} → ${nodeName(s, c.to)} · Tier ${c.tier} · ${beltCapacity(c)} a day`))),
+      h('p.dim.small', c.to.kind === 'trader' ? 'Sells its load every day.' : c.to.kind === 'turret' ? 'Tops up ammo every day.' : 'Runs the recipe every day as far as Labor, Energy and materials allow, and the machine pays no hauling for this resource.'),
+      cost ? h('div.card.flat.stack', h('div.row.between', h('b', `Upgrade to tier ${c.tier + 1} · ${(C.BELT_CAPACITY as readonly number[])[c.tier]} a day`), h('button.btn.sm', { onclick: () => act({ type: 'upgrade_conveyor', id }) }, 'Upgrade')), costChips(s, { res: cost.res, gold: cost.gold }))
+        : h('p.c-gold', 'Top tier.'),
+      armed('Remove belt', () => { if (act({ type: 'remove_conveyor', id })) close(); }));
+  });
+}
+
 function openStockSheet(): void {
   liveSheet(close => {
     const s = store.state;
@@ -441,10 +460,7 @@ function raidLine(r: RaidRecord): string {
   const o = r.outcome;
   const base = `${crew} from ${zone}. ${o.killed} killed in ${o.ticks} ticks.`;
   if (o.repelled) { const d = Object.entries(o.drops).map(([id, n]) => `${n} ${RESOURCES[id as ResourceId].name}`).join(', '); return `${base}${d ? ` They dropped ${d}.` : ''}`; }
-  const loss = o.loss?.kind === 'steal' ? `They took ${o.loss.amount} ${RESOURCES[o.loss.resource].name}.`
-    : o.loss?.kind === 'turret' ? `They wrecked your ${TURRETS[o.loss.def].name}.`
-    : o.loss?.kind === 'building' ? `They wrecked your ${BUILDINGS[o.loss.def].name}.` : 'Nothing worth taking.';
-  return `${base} ${o.breached} got through. ${loss}`;
+  return `${base} ${o.breached} got through. ${lossText(o)}`;
 }
 
 const touches = (c: Conveyor, kind: string, iid: string) =>

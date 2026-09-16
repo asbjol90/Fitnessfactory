@@ -111,3 +111,9 @@ Everything else is 1:1 with the shipped v1 `index.html`.
 - Ammo per shot 2 → 1; the balance sim had assumed full magazines, so real raids ran turrets dry in five ticks. Press yields raised: Cartridges 6, Hardened Rounds 6, Alloy Rounds 8 per run. "Fill" button on turrets (Factory wall and Defence roster).
 - Raid chance per run 20% → 15%. Repelled raids drop more scrap (1.5 per kill) and roll a bonus 15% of the time.
 - `npm run defsim` now simulates with 40 ammo per turret (`AMMO=… npm run defsim` to change).
+
+### Batch: ammo, backlog, smoother fights (Sept 2026)
+- Press yields doubled again: Cartridges 12, Hardened Rounds 12, Alloy Rounds 16 per run.
+- Tap a belt on the factory floor → belt sheet (tier, capacity, upgrade, remove); belts have a wide tap area. Tap the wall band → wall sheet. The wall card on Defence stays visible during a pending raid (upgrade locked).
+- Fight rendering is patched in place between ticks, so raiders glide along the road, HP bars shrink smoothly, turrets swing continuously, and kills fade with a puff instead of the whole field redrawing.
+- Breach consequences escalate: each breacher grabs a cut of a raw pile (more breachers → more piles, bigger cuts); 2+ tear down your barricades; 3+ wreck a turret (or a building if you have none); 5+ wreck a building as well.

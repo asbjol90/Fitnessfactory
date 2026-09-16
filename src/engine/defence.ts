@@ -27,9 +27,11 @@ export interface Fight {
   last: TickLog;
   done: RaidOutcome | null;
 }
+export type RaidLoss = { kind: 'steal'; resource: ResourceId; amount: number } | { kind: 'turret'; def: TurretId } | { kind: 'building'; def: BuildingId } | { kind: 'barricades'; count: number };
 export interface RaidOutcome {
   repelled: boolean; killed: number; breached: number; ticks: number;
-  loss: null | { kind: 'steal'; resource: ResourceId; amount: number } | { kind: 'turret'; def: TurretId } | { kind: 'building'; def: BuildingId };
+  /** Escalates with how many got through: 1 → grab, 2 → bigger grab, 3+ → a turret is wrecked, 5+ → a building too. */
+  losses: RaidLoss[];
   drops: Bag; gearDrop: StatId | null;
 }
 export interface PendingRaid { seed: number; zoneTier: number; startedAt: number; fight: Fight; }
@@ -151,7 +153,7 @@ function finish(s: State, pr: PendingRaid, rng: Rng): void {
   const killed = f.raiders.filter(r => !r.alive).length;
   const breached = f.raiders.filter(r => r.breached).length;
   const repelled = breached === 0;
-  const outcome: RaidOutcome = { repelled, killed, breached, ticks: f.tick, loss: null, drops: {}, gearDrop: null };
+  const outcome: RaidOutcome = { repelled, killed, breached, ticks: f.tick, losses: [], drops: {}, gearDrop: null };
 
   if (repelled) {
     const scrap = Math.round(killed * DROPS.scrapPerKill * (1 + 0.25 * (pr.zoneTier - 1)));
@@ -166,7 +168,7 @@ function finish(s: State, pr: PendingRaid, rng: Rng): void {
     }
     addBag(s.res, outcome.drops);
   } else {
-    outcome.loss = applyLoss(s, pr.zoneTier, breached, rng);
+    outcome.losses = applyLoss(s, pr.zoneTier, breached, rng);
   }
   f.done = outcome;
   const wave = waveDef(pr.zoneTier).groups.map(g => ({ type: g.type, count: g.count }));
@@ -174,32 +176,36 @@ function finish(s: State, pr: PendingRaid, rng: Rng): void {
   if (s.raidHistory.length > C.RAID_HISTORY_KEEP) s.raidHistory.length = C.RAID_HISTORY_KEEP;
 }
 
-function applyLoss(s: State, tier: number, breached: number, rng: Rng): RaidOutcome['loss'] {
-  const stealable = (['iron_ore', 'coal', 'stone'] as ResourceId[]).filter(id => s.res[id] > 0);
-  const turretIds = Object.keys(s.turrets);
-  const buildingIds = Object.keys(s.buildings);
-  // More breachers → worse. One or two: they grab what they can carry. Three+: something gets wrecked.
-  const wreck = breached >= 3 && rng() < 0.6;
-  if (wreck && turretIds.length && rng() < 0.7) {
-    const iid = pick(rng, turretIds); const def = s.turrets[iid]!.def;
+function applyLoss(s: State, tier: number, breached: number, rng: Rng): RaidLoss[] {
+  const out: RaidLoss[] = [];
+  // Grab: each breacher takes a cut of one raw pile; more breachers → more piles and bigger cuts.
+  const raws = (['iron_ore', 'coal', 'stone'] as ResourceId[]).filter(id => s.res[id] > 0).sort(() => rng() - 0.5);
+  const frac = Math.min(0.5, (0.08 + 0.02 * (tier - 1)) * breached);
+  for (const resource of raws.slice(0, Math.min(3, breached))) {
+    const amount = Math.max(1, Math.floor(s.res[resource] * frac));
+    s.res[resource] -= amount;
+    out.push({ kind: 'steal', resource, amount });
+  }
+  if (breached >= 2 && s.barricades.length) { out.push({ kind: 'barricades', count: s.barricades.length }); s.barricades = []; }
+  const wreckTurret = () => {
+    const ids = Object.keys(s.turrets); if (!ids.length) return false;
+    const iid = pick(rng, ids); const def = s.turrets[iid]!.def;
     delete s.turrets[iid]; delete s.turretCells[iid];
     const idx = s.slots.findIndex(e => e && e.kind === 'turret' && e.iid === iid); if (idx >= 0) s.slots[idx] = null;
     removeConveyorsTouching(s, 'turret', iid);
-    return { kind: 'turret', def };
-  }
-  if (wreck && buildingIds.length) {
-    const iid = pick(rng, buildingIds); const def = BUILDINGS[s.buildings[iid]!.def].id;
+    out.push({ kind: 'turret', def }); return true;
+  };
+  const wreckBuilding = () => {
+    const ids = Object.keys(s.buildings); if (!ids.length) return false;
+    const iid = pick(rng, ids); const def = BUILDINGS[s.buildings[iid]!.def].id;
     delete s.buildings[iid];
     const idx = s.slots.findIndex(e => e && e.kind === 'building' && e.iid === iid); if (idx >= 0) s.slots[idx] = null;
     removeConveyorsTouching(s, 'building', iid);
-    return { kind: 'building', def };
-  }
-  if (stealable.length === 0) return null;
-  const resource = pick(rng, stealable);
-  const frac = Math.min(0.6, (C.RAID_STEAL_BASE + (tier - 1) * C.RAID_STEAL_PER_TIER) * Math.min(3, breached));
-  const amount = Math.max(1, Math.floor(s.res[resource] * frac));
-  s.res[resource] -= amount;
-  return { kind: 'steal', resource, amount };
+    out.push({ kind: 'building', def }); return true;
+  };
+  if (breached >= 3) { if (!wreckTurret()) wreckBuilding(); }
+  if (breached >= 5) wreckBuilding();
+  return out;
 }
 
 export const barricadeCost = () => BARRICADE;
