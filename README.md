@@ -83,3 +83,4 @@ Everything else is 1:1 with the shipped v1 `index.html`.
 - Long-press any building or turret card (build sheet or on the floor) for the full picture: recipes, paths, what feeds it, what it feeds, build requirements, and for turrets how many are needed per zone.
 - Tapping the Trader opens the Trading Post.
 - Extra weekly contract slots can be bought for 25 / 40 / 60 Gold (resets Monday).
+- Palette pass: warm charcoal base and desaturated accents app-wide (tokens in `styles.css`); floor lighting is grime and small lamp pools instead of light cones. Stockpile is double width with five resource counters.

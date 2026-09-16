@@ -7,10 +7,14 @@ import { iconInner } from './nodes';
 
 export function floorDefs(): string {
   return `<defs>
-  <pattern id="p-concrete" width="24" height="24" patternUnits="userSpaceOnUse">
-    <rect width="24" height="24" fill="var(--floor)"/>
-    <path d="M0 0H24M0 0V24" stroke="var(--floor-line)" stroke-width="1"/>
-    <circle cx="6" cy="17" r=".8" fill="var(--floor-line)"/><circle cx="17" cy="5" r=".7" fill="var(--floor-line)"/><circle cx="13" cy="13" r=".5" fill="var(--floor-line)"/>
+  <pattern id="p-concrete" width="48" height="48" patternUnits="userSpaceOnUse">
+    <rect width="48" height="48" fill="var(--floor)"/>
+    <path d="M0 0H48M0 0V48M24 0V48M0 24H48" stroke="var(--floor-line)" stroke-width="1"/>
+    <path d="M3 44l6-3M30 8l5 4M40 40l4-6" stroke="var(--grime)" stroke-width="1.2" opacity=".8"/>
+    <circle cx="6" cy="17" r="1" fill="var(--floor-line)"/><circle cx="37" cy="29" r="1.4" fill="var(--grime)"/><circle cx="14" cy="36" r=".8" fill="var(--floor-line)"/><circle cx="43" cy="9" r=".9" fill="var(--grime)"/>
+  </pattern>
+  <pattern id="p-grate" width="6" height="6" patternUnits="userSpaceOnUse">
+    <rect width="6" height="6" fill="var(--steel-dk)"/><rect x="1" y="1" width="4" height="4" fill="var(--grime)"/>
   </pattern>
   <pattern id="p-dirt" width="18" height="18" patternUnits="userSpaceOnUse">
     <rect width="18" height="18" fill="var(--dirt)"/>
@@ -27,7 +31,7 @@ export function floorDefs(): string {
     <rect width="8" height="8" fill="var(--belt)"/><rect x="0" width="2" height="8" fill="var(--belt-roller)"/>
   </pattern>
   <radialGradient id="g-lamp" cx="50%" cy="0%" r="70%">
-    <stop offset="0%" stop-color="var(--lamp)" stop-opacity=".22"/><stop offset="100%" stop-color="var(--lamp)" stop-opacity="0"/>
+    <stop offset="0%" stop-color="var(--lamp)" stop-opacity=".10"/><stop offset="100%" stop-color="var(--lamp)" stop-opacity="0"/>
   </radialGradient>
   <radialGradient id="g-pad" cx="50%" cy="30%" r="80%">
     <stop offset="0%" stop-color="var(--pad-hi)"/><stop offset="100%" stop-color="var(--pad)"/>
@@ -53,7 +57,10 @@ export function environment(g: EnvGeometry): string {
 <rect x="0" y="${roomTop}" width="${W}" height="${lineY - roomTop}" fill="url(#p-concrete)"/>
 <rect x="0" y="${rampartY}" width="${W}" height="${lineY - rampartY}" fill="var(--rampart)" opacity=".55"/>
 <rect x="0" y="${roomTop}" width="${W}" height="3" fill="var(--wall-mortar)"/>
-${lamps.map(x => `<g class="lamp"><rect x="${x - 7}" y="${roomTop}" width="14" height="6" fill="var(--steel-dk)"/><rect x="${x - 4}" y="${roomTop + 6}" width="8" height="3" fill="var(--lamp)" filter="url(#f-glow)"/><path d="M${x - 60} ${roomTop + 8} L${x + 60} ${roomTop + 8} L${x + 110} ${rampartY} L${x - 110} ${rampartY}Z" fill="url(#g-lamp)"/></g>`).join('')}
+${lamps.map(x => `<g class="lamp"><rect x="${x - 7}" y="${roomTop}" width="14" height="6" fill="var(--steel-dk)"/><rect x="${x - 4}" y="${roomTop + 6}" width="8" height="3" fill="var(--lamp)" filter="url(#f-glow)"/><ellipse cx="${x}" cy="${roomTop + 70}" rx="110" ry="60" fill="url(#g-lamp)"/></g>`).join('')}
+${grime(W, roomTop, rampartY)}
+<rect x="0" y="${rampartY - 6}" width="${W}" height="5" fill="url(#p-grate)"/>
+<rect x="0" y="${rampartY - 6}" width="${W}" height="1" fill="var(--steel)"/>
 <rect x="0" y="${lineY - 4}" width="${W}" height="${bandH + 4}" fill="url(#p-brick)"/>
 <rect x="0" y="${lineY - 4}" width="${W}" height="3" fill="var(--wall-top)"/>
 ${crenels(W, lineY - 9)}
@@ -61,6 +68,12 @@ ${crenels(W, lineY - 9)}
 <rect x="${gateX - 16}" y="${lineY - 8}" width="32" height="${bandH + 8}" fill="var(--bg)"/>
 <rect x="${gateX - 18}" y="${lineY - 10}" width="5" height="${bandH + 12}" fill="url(#p-hazard)"/><rect x="${gateX + 13}" y="${lineY - 10}" width="5" height="${bandH + 12}" fill="url(#p-hazard)"/>
 <text x="${W - 14}" y="${lineY + 32}" text-anchor="end" class="wall-text" style="fill:var(--ink-dim)">OUTSIDE</text>`;
+}
+/** Oil stains and scuffs: fixed positions so the floor doesn't shimmer between renders. */
+function grime(W: number, top: number, bottom: number): string {
+  const spots = [[0.12, 0.35, 34, 12], [0.58, 0.22, 26, 9], [0.82, 0.62, 40, 14], [0.32, 0.78, 22, 8], [0.68, 0.85, 30, 10]] as const;
+  return spots.map(([fx, fy, rx, ry]) => `<ellipse cx="${W * fx}" cy="${top + (bottom - top) * fy}" rx="${rx}" ry="${ry}" fill="var(--grime)" opacity=".55"/>`).join('') +
+    `<rect x="${W * 0.45}" y="${top + 12}" width="3" height="${(bottom - top) * 0.3}" fill="var(--grime)" opacity=".5"/>`;
 }
 function crenels(W: number, y: number): string {
   let out = '';
@@ -105,15 +118,16 @@ export function beltItems(pathId: string, resource: ResourceId, amount: number):
 export function stockRack(s: State, x: number, y: number, w: number, h: number): string {
   const entries = (Object.keys(RESOURCES) as ResourceId[]).map(id => [id, s.res[id]] as const).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
   const total = entries.reduce((a, [, n]) => a + n, 0);
-  const crates = Math.min(12, Math.ceil(total / 15));
+  const cols = Math.floor((w - 16) / 20), rows = Math.floor((h - 26) / 14);
+  const crates = Math.min(cols * rows, Math.ceil(total / 12));
   let out = `<rect x="${x + 6}" y="${y + 6}" width="${w - 12}" height="${h - 10}" rx="2" fill="var(--steel-dk)"/>`;
-  for (let r = 0; r < 3; r++) out += `<rect x="${x + 6}" y="${y + 22 + r * 14}" width="${w - 12}" height="2" fill="var(--steel-lt)"/>`;
+  for (let r = 0; r < rows; r++) out += `<rect x="${x + 6}" y="${y + 22 + r * 14}" width="${w - 12}" height="2" fill="var(--steel-lt)"/>`;
   for (let i = 0; i < crates; i++) {
-    const row = Math.floor(i / 4), col = i % 4;
+    const row = Math.floor(i / cols), col = i % cols;
     const cx = x + 10 + col * 20, cy = y + h - 18 - row * 14;
     out += `<rect x="${cx}" y="${cy}" width="16" height="11" rx="1.5" fill="var(--copper)"/><path d="M${cx} ${cy + 6}h16" stroke="var(--brick-dk)" stroke-width="1.5"/><rect x="${cx + 6}" y="${cy + 2}" width="4" height="8" fill="var(--brick-dk)"/>`;
   }
-  const top = entries.slice(0, 3);
-  out += top.map(([id, n], i) => `<g transform="translate(${x + 9 + i * 28},${y + 7})"><g transform="scale(.7)">${iconInner(id)}</g><text x="13" y="9" class="node-sub" style="font-size:9px">${n}</text></g>`).join('');
+  const top = entries.slice(0, Math.max(3, Math.floor((w - 12) / 36)));
+  out += top.map(([id, n], i) => `<g transform="translate(${x + 9 + i * 36},${y + 7})"><g transform="scale(.7)">${iconInner(id)}</g><text x="13" y="9" class="node-sub" style="font-size:9px">${n}</text></g>`).join('');
   return out;
 }

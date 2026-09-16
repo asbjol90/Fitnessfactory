@@ -25,14 +25,14 @@ const BW = 96, BH = 64, GX = 12, GY = 36, COLS = 4, PAD = 32;
 const LANE = 26;
 const W = PAD * 2 + COLS * BW + (COLS - 1) * GX;
 
-interface Placed { x: number; y: number; ref: NodeRef; slot?: number }
+interface Placed { x: number; y: number; ref: NodeRef; slot?: number; w?: number; h?: number }
 
 export function renderFactory(s: State): Node {
   const size = factorySize(s);
   const rows = Math.ceil(size.interior / COLS);
   const roomTop = 10;
   const stockY = roomTop + 22;
-  const gridY = stockY + BH + GY;
+  const gridY = stockY + BH + 14 + GY;
   const wallY = gridY + rows * (BH + GY);
   const rampartY = wallY - 10;
   const lineY = wallY + BH + LANE + 6;
@@ -52,7 +52,8 @@ export function renderFactory(s: State): Node {
     const rowW = size.wall * BW + (size.wall - 1) * GX;
     return { x: (W - rowW) / 2 + wi * (BW + GX), y: wallY };
   };
-  const stock: Placed = { x: (W - BW) / 2, y: stockY, ref: { kind: 'stock' } };
+  const SW = BW * 2 + GX, SH = BH + 14;
+  const stock: Placed = { x: (W - SW) / 2, y: stockY, ref: { kind: 'stock' }, w: SW, h: SH };
   const trader: Placed = { x: (W - BW) / 2 - BW / 2 - GX, y: outY, ref: { kind: 'trader' } };
   const raidBox = { x: (W - BW) / 2 + BW / 2 + GX, y: outY };
   nodes.push(stock, trader);
@@ -96,8 +97,8 @@ export function renderFactory(s: State): Node {
 
   // Fixed nodes
   const fixedSel = (r: NodeRef): 'sel' | 'normal' => (ui.selNode && ui.selNode.kind === r.kind ? 'sel' : 'normal');
-  parts.push(`<g data-node="stock">${pad(stock.x, stock.y, BW, BH, fixedSel(stock.ref))}${stockRack(s, stock.x, stock.y, BW, BH)}` +
-    `<text x="${stock.x + BW / 2}" y="${stock.y - 6}" text-anchor="middle" class="node-label">Stockpile</text><rect x="${stock.x}" y="${stock.y}" width="${BW}" height="${BH}" class="node-hit"/></g>`);
+  parts.push(`<g data-node="stock">${pad(stock.x, stock.y, SW, SH, fixedSel(stock.ref))}${stockRack(s, stock.x, stock.y, SW, SH)}` +
+    `<text x="${stock.x + SW / 2}" y="${stock.y - 6}" text-anchor="middle" class="node-label">Stockpile</text><rect x="${stock.x}" y="${stock.y}" width="${SW}" height="${SH}" class="node-hit"/></g>`);
   parts.push(`<g data-node="trader">${pad(trader.x, trader.y, BW, BH, fixedSel(trader.ref))}<g transform="translate(${trader.x},${trader.y})">${traderArt()}</g>` +
     `<text x="${trader.x + BW / 2}" y="${trader.y + BH + 12}" text-anchor="middle" class="node-label">Trader</text><rect x="${trader.x}" y="${trader.y}" width="${BW}" height="${BH}" class="node-hit"/></g>`);
   for (let i = 0; i < s.solar; i++) {
@@ -171,17 +172,18 @@ function beltMarkup(c: Conveyor, nodes: Placed[], stale: boolean, idx: number, l
   if (!a || !b) return '';
   const off = (idx % 3 - 1) * 5; // spread parallel belts
   const pts: Array<[number, number]> = [];
-  const ax = a.x + BW / 2 + off, bx = b.x + BW / 2 + off;
+  const aw = a.w ?? BW, ah = a.h ?? BH, bw = b.w ?? BW;
+  const ax = a.x + aw / 2 + off, bx = b.x + bw / 2 + off;
   if (c.to.kind === 'trader') {
     // Shipping lane: down into the lane, west to the gutter, south past the wall, east into the Trader.
     const gutter = PAD / 2 + off / 2;
-    pts.push([ax, a.y + BH], [ax, a.y + BH + LANE], [gutter, a.y + BH + LANE], [gutter, b.y + BH / 2 + off], [b.x, b.y + BH / 2 + off]);
+    pts.push([ax, a.y + ah], [ax, a.y + ah + LANE], [gutter, a.y + ah + LANE], [gutter, b.y + BH / 2 + off], [b.x, b.y + BH / 2 + off]);
   } else if (b.y > a.y) {
-    const laneA = a.y + BH + LANE, laneB = b.y - GY + LANE; // lane under source row / lane just above target row
-    if (laneB - laneA < 1) pts.push([ax, a.y + BH], [ax, laneA], [bx, laneA], [bx, b.y]);
+    const laneA = a.y + ah + LANE, laneB = b.y - GY + LANE; // lane under source row / lane just above target row
+    if (laneB - laneA < 1) pts.push([ax, a.y + ah], [ax, laneA], [bx, laneA], [bx, b.y]);
     else { // skips a row: detour via the nearest gutter so no box is crossed
       const gutter = (ax + bx) / 2 < W / 2 ? PAD / 2 + off : W - PAD / 2 + off;
-      pts.push([ax, a.y + BH], [ax, laneA], [gutter, laneA], [gutter, laneB], [bx, laneB], [bx, b.y]);
+      pts.push([ax, a.y + ah], [ax, laneA], [gutter, laneA], [gutter, laneB], [bx, laneB], [bx, b.y]);
     }
   } else if (b.y < a.y) {
     const laneA = a.y - GY + LANE, laneB = b.y + BH + LANE;
