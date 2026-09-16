@@ -84,3 +84,4 @@ Everything else is 1:1 with the shipped v1 `index.html`.
 - Tapping the Trader opens the Trading Post.
 - Extra weekly contract slots can be bought for 25 / 40 / 60 Gold (resets Monday).
 - Palette pass: warm charcoal base and desaturated accents app-wide (tokens in `styles.css`); floor lighting is grime and small lamp pools instead of light cones. Stockpile is double width with five resource counters.
+- Factory dressing: overhead pipe run with valve and brackets, two slowly turning gear clusters, hazard-striped shipping lane and loading bay. Stockpile sheet grouped by tier with totals, value, and a Sell shortcut.

@@ -45,12 +45,13 @@ export function floorDefs(): string {
 </defs>`;
 }
 
-export interface EnvGeometry { W: number; H: number; roomTop: number; rampartY: number; lineY: number; gateX: number; }
+export interface EnvGeometry { W: number; H: number; roomTop: number; rampartY: number; lineY: number; gateX: number; corridorX?: number; stock?: { x: number; y: number; w: number; h: number }; }
 
 /** Ground, room, rampart strip, wall band with gate, lamps. Drawn first. */
 export function environment(g: EnvGeometry): string {
   const { W, H, roomTop, rampartY, lineY, gateX } = g;
   const bandH = 16;
+  const corridorX = g.corridorX ?? gateX;
   const lamps = [W * 0.25, W * 0.5, W * 0.75];
   return `
 <rect x="0" y="0" width="${W}" height="${H}" fill="url(#p-dirt)"/>
@@ -59,8 +60,14 @@ export function environment(g: EnvGeometry): string {
 <rect x="0" y="${roomTop}" width="${W}" height="3" fill="var(--wall-mortar)"/>
 ${lamps.map(x => `<g class="lamp"><rect x="${x - 7}" y="${roomTop}" width="14" height="6" fill="var(--steel-dk)"/><rect x="${x - 4}" y="${roomTop + 6}" width="8" height="3" fill="var(--lamp)" filter="url(#f-glow)"/><ellipse cx="${x}" cy="${roomTop + 70}" rx="110" ry="60" fill="url(#g-lamp)"/></g>`).join('')}
 ${grime(W, roomTop, rampartY)}
+${pipes(W, roomTop)}
+${gearCluster(W - 34, roomTop + 60, 14)}
+${gearCluster(W - 30, rampartY - 40, 11)}
 <rect x="0" y="${rampartY - 6}" width="${W}" height="5" fill="url(#p-grate)"/>
 <rect x="0" y="${rampartY - 6}" width="${W}" height="1" fill="var(--steel)"/>
+<rect x="${corridorX + 12}" y="${roomTop + 40}" width="3" height="${lineY - roomTop - 44}" fill="url(#p-hazard)" opacity=".8"/>
+<text transform="translate(${corridorX + 26} ${roomTop + 120}) rotate(90)" class="wall-text" style="fill:var(--ink-dim);font-size:9px">SHIPPING LANE</text>
+${g.stock ? loadingZone(g.stock) : ''}
 <rect x="0" y="${lineY - 4}" width="${W}" height="${bandH + 4}" fill="url(#p-brick)"/>
 <rect x="0" y="${lineY - 4}" width="${W}" height="3" fill="var(--wall-top)"/>
 ${crenels(W, lineY - 9)}
@@ -68,6 +75,33 @@ ${crenels(W, lineY - 9)}
 <rect x="${gateX - 16}" y="${lineY - 8}" width="32" height="${bandH + 8}" fill="var(--bg)"/>
 <rect x="${gateX - 18}" y="${lineY - 10}" width="5" height="${bandH + 12}" fill="url(#p-hazard)"/><rect x="${gateX + 13}" y="${lineY - 10}" width="5" height="${bandH + 12}" fill="url(#p-hazard)"/>
 <text x="${W - 14}" y="${lineY + 32}" text-anchor="end" class="wall-text" style="fill:var(--ink-dim)">OUTSIDE</text>`;
+}
+/** Overhead pipe run along the back wall with a valve and a bracket per lamp. */
+function pipes(W: number, top: number): string {
+  const y = top + 14;
+  return `<rect x="0" y="${y}" width="${W}" height="6" rx="3" fill="var(--steel-dk)"/><rect x="0" y="${y + 1}" width="${W}" height="1.5" fill="var(--steel)" opacity=".6"/>` +
+    [0.15, 0.4, 0.62, 0.88].map(f => `<rect x="${W * f - 3}" y="${y - 2}" width="6" height="10" rx="1" fill="var(--steel)"/>`).join('') +
+    `<circle cx="${W * 0.72}" cy="${y + 3}" r="6" fill="var(--brick)"/><path d="M${W * 0.72 - 4} ${y + 3}h8" stroke="var(--hazard)" stroke-width="2"/>` +
+    `<rect x="${W * 0.28}" y="${y + 6}" width="6" height="18" fill="var(--steel-dk)"/><rect x="${W * 0.28 - 4}" y="${y + 24}" width="14" height="4" fill="var(--steel)"/>`;
+}
+/** Two meshed gears that turn slowly. */
+function gearCluster(cx: number, cy: number, r: number): string {
+  const gear = (x: number, y: number, rr: number, teeth: number, dir: 1 | -1, dur: number) => {
+    let d = '';
+    for (let i = 0; i < teeth; i++) {
+      const a = (i / teeth) * Math.PI * 2, a2 = ((i + 0.5) / teeth) * Math.PI * 2;
+      d += `${i ? 'L' : 'M'}${(x + Math.cos(a) * rr).toFixed(1)} ${(y + Math.sin(a) * rr).toFixed(1)} L${(x + Math.cos(a2) * rr * 0.72).toFixed(1)} ${(y + Math.sin(a2) * rr * 0.72).toFixed(1)}`;
+    }
+    return `<g style="transform-origin:${x}px ${y}px;animation:spin ${dur}s linear infinite${dir < 0 ? ' reverse' : ''}"><path d="${d}Z" fill="var(--steel)"/><circle cx="${x}" cy="${y}" r="${rr * 0.35}" fill="var(--steel-dk)"/><circle cx="${x}" cy="${y}" r="${rr * 0.12}" fill="var(--hazard)"/></g>`;
+  };
+  return `<rect x="${cx - r - 6}" y="${cy - r - 4}" width="${r * 2 + 12}" height="${r * 2 + 8}" rx="3" fill="var(--grime)" opacity=".7"/>` +
+    gear(cx - r * 0.55, cy, r, 8, 1, 14) + gear(cx + r * 0.75, cy + r * 0.2, r * 0.7, 6, -1, 9.8);
+}
+/** Hazard-striped loading bay under the stockpile. */
+function loadingZone(b: { x: number; y: number; w: number; h: number }): string {
+  const y = b.y + b.h + 4;
+  return `<rect x="${b.x - 6}" y="${y}" width="${b.w + 12}" height="3" fill="url(#p-hazard)" opacity=".75"/>` +
+    `<rect x="${b.x - 6}" y="${b.y - 4}" width="3" height="${b.h + 8}" fill="url(#p-hazard)" opacity=".5"/><rect x="${b.x + b.w + 3}" y="${b.y - 4}" width="3" height="${b.h + 8}" fill="url(#p-hazard)" opacity=".5"/>`;
 }
 /** Oil stains and scuffs: fixed positions so the floor doesn't shimmer between renders. */
 function grime(W: number, top: number, bottom: number): string {

@@ -10,7 +10,7 @@ import {
   BUILDINGS, BUILDING_IDS, C, INFRA, RESOURCES, SOLAR_PANEL, TURRETS, TURRET_IDS, ZONES,
   activeDrain, activeRecipes, buildingBlocker, buildingLabel, dailyEnergyBalance, factorySize, freshRaid, hasTech, nextFactorySize,
   slotIsWall, solarCap, staleConveyors, timesAffordable, workshopUnlocked,
-  type BuildingInst, type Conveyor, type NodeRef, type RaidRecord, type ResourceId, type State, type TurretInst,
+  type BuildingInst, type Conveyor, type NodeRef, type RaidRecord, type ResourceId, type ResourceTier, type State, type TurretInst,
 } from '../../engine';
 
 type Mode = 'view' | 'arrange' | 'connect';
@@ -59,7 +59,7 @@ export function renderFactory(s: State): Node {
   nodes.push(stock, trader);
 
   const parts: string[] = [];
-  parts.push(environment({ W, H, roomTop, rampartY, lineY, gateX }));
+  parts.push(environment({ W, H, roomTop, rampartY, lineY, gateX, corridorX: gateX, stock: { x: (W - (BW * 2 + GX)) / 2, y: stockY, w: BW * 2 + GX, h: BH + 14 } }));
 
   // Slots
   s.slots.forEach((entry, i) => {
@@ -395,15 +395,33 @@ function beltRow(s: State, c: Conveyor): Node {
     h('button.btn.sm', { onclick: () => act({ type: 'remove_conveyor', id: c.id }) }, 'Remove'));
 }
 
+const STOCK_GROUPS: Array<{ tier: ResourceTier; title: string; blurb: string }> = [
+  { tier: 'raw', title: 'Raw', blurb: 'From cardio. Feeds the main floor.' },
+  { tier: 'premium', title: 'Premium', blurb: 'Rare cardio finds. Refinery and Lapidary.' },
+  { tier: 'rare', title: 'Rare', blurb: 'Hardened Steel — loot luck or the Foundry.' },
+  { tier: 'refined', title: 'Refined', blurb: 'Made here. Build with it or sell it.' },
+  { tier: 'ammo', title: 'Ammunition', blurb: 'For the wall.' },
+];
 function openStockSheet(): void {
-  liveSheet(() => {
+  liveSheet(close => {
     const s = store.state;
-    const rows = (Object.keys(RESOURCES) as ResourceId[]).filter(id => s.res[id] > 0);
+    const all = (Object.keys(RESOURCES) as ResourceId[]);
+    const total = all.reduce((a, id) => a + s.res[id], 0);
+    const value = all.reduce((a, id) => a + s.res[id] * RESOURCES[id].sell, 0);
     const belts = s.conveyors.filter(c => c.from.kind === 'stock');
-    return h('div.stack', h('h2', 'Stockpile'),
-      rows.length === 0 ? h('div.empty', 'Nothing here yet. Cardio brings loot.') :
-        h('div.res-list', rows.map(id => h('div.res', icon(id), RESOURCES[id].name, h('b', String(s.res[id]))))),
-      belts.length > 0 && h('div.stack', h('h3', 'Belts out'), belts.map(c => beltRow(s, c))));
+    return h('div.stack',
+      h('div.shop-head', h('div', h('h2', 'Stockpile'), h('p.dim.small', `${total} units on the shelves · worth ${value} Gold at the Trader`)),
+        h('button.btn.sm', { onclick: () => { close(); go('trade'); } }, 'Sell')),
+      total === 0 ? h('div.empty', 'Nothing here yet. Cardio brings loot.') :
+        STOCK_GROUPS.map(g => {
+          const ids = all.filter(id => RESOURCES[id].tier === g.tier && s.res[id] > 0);
+          if (ids.length === 0) return null;
+          const sub = ids.reduce((a, id) => a + s.res[id], 0);
+          return h('div.card.flat.stack', { style: { gap: '8px' } },
+            h('div.row.between', h('div', h('div.shop-group.dim.small', g.title), h('div.dim.small', g.blurb)), h('b.dim', `${sub}`)),
+            h('div.res-list', ids.map(id => h('div.res', icon(id), RESOURCES[id].name, h('b', String(s.res[id]))))));
+        }),
+      belts.length > 0 && h('div.card.flat.stack', h('h3', 'Belts out'), belts.map(c => beltRow(s, c))));
   });
 }
 function openRaidHistory(): void {
