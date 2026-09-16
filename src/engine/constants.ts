@@ -68,11 +68,11 @@ export const C = {
   SOLAR_CAP: [1, 2, 3, 4] as const,
 
   // --- Turrets / raids ----------------------------------------------------
-  AMMO_PER_SHOT: 2,
+  AMMO_PER_SHOT: 1,   // 1.0 CHANGE: was 2 — raids were eating a week of production
   AMMO_LOAD_AMOUNT: 10,   // 1.0 CHANGE: was 20
   AMMO_CAP: 200,
   RAID_GRACE_RUNS: 5,
-  RAID_CHANCE: 0.2,
+  RAID_CHANCE: 0.15,  // 1.0 CHANGE: was 0.2 — each raid now costs attention and ammo
   RAID_STEAL_BASE: 0.15,
   RAID_STEAL_PER_TIER: 0.08,
   RAID_HISTORY_KEEP: 20,

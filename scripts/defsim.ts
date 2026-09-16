@@ -6,6 +6,7 @@
 import { C, GRID_COLS, GRID_ROWS, TURRET_COMBAT, TURRET_IDS, cellFromIndex, cellIndex, chebyshev, initialState, pathOf, placeable, reduce, seededRng, type State, type TurretId } from '../src/engine';
 
 const T0 = Date.now();
+const AMMO = Number(process.env.AMMO ?? 40);
 function setup(turret: TurretId, n: number, wall: 1 | 2 | 3, zone: number): State {
   let s = initialState(T0);
   s = reduce(s, { type: 'pick_avatar', id: 'm1_worker', name: 'sim' }, { now: T0, rng: Math.random }).state;
@@ -17,7 +18,7 @@ function setup(turret: TurretId, n: number, wall: 1 | 2 | 3, zone: number): Stat
   cells.sort((a, b) => score(b) - score(a));
   for (let k = 0; k < n; k++) {
     const iid = `t${k}`;
-    s.turrets[iid] = { iid, def: turret, ammo: C.AMMO_CAP };
+    s.turrets[iid] = { iid, def: turret, ammo: AMMO };
     s.turretCells[iid] = cells[k]!;
   }
   return s;
@@ -56,4 +57,4 @@ for (let zone = 1; zone <= 5; zone++) {
     console.log(`  ${zone}     ${wall}  | ${row.map(x => x.padEnd(14)).join('| ')}`);
   }
 }
-console.log('(cells: repel % with 2/3/4 turrets of that type, full ammo, no rally)');
+console.log(`(cells: repel % with 2/3/4 turrets of that type, ${AMMO} ammo each, no rally)`);

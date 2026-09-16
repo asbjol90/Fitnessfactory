@@ -106,3 +106,8 @@ Everything else is 1:1 with the shipped v1 `index.html`.
 - Repelled raids drop scrap (Iron Ore/Coal per kill) with a 10% roll for Hardened Steel, a premium, or in Hollow/Reach a gear tier. Breaches steal raw materials; three or more breachers can wreck a turret or building.
 - The fight is deterministic per raid seed and advances one tick per action, so it survives closing the app mid-fight.
 - Save version 5; old raid records are dropped.
+
+### Hotfix: ammo economy (Sept 2026)
+- Ammo per shot 2 → 1; the balance sim had assumed full magazines, so real raids ran turrets dry in five ticks. Press yields raised: Cartridges 6, Hardened Rounds 6, Alloy Rounds 8 per run. "Fill" button on turrets (Factory wall and Defence roster).
+- Raid chance per run 20% → 15%. Repelled raids drop more scrap (1.5 per kill) and roll a bonus 15% of the time.
+- `npm run defsim` now simulates with 40 ammo per turret (`AMMO=… npm run defsim` to change).

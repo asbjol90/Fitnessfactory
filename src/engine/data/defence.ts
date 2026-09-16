@@ -73,4 +73,4 @@ export const SPAWN_PER_TICK = 2;
 export const MAX_TICKS = 80;
 
 /** Win drops. */
-export const DROPS = { scrapPerKill: 0.6, bonusChance: 0.10 };
+export const DROPS = { scrapPerKill: 1.5, bonusChance: 0.15 };

@@ -60,7 +60,7 @@ function apply(s: State, a: Action, ctx: Ctx, ev: GameEvent[]): void {
     case 'sell': return sell(s, a.resource, a.units, ev);
     case 'buy': return buy(s, a.resource, a.units, ev);
     case 'build_turret': return buildTurret(s, a.turret, a.slot, ev);
-    case 'load_ammo': return loadAmmo(s, a.iid, ev);
+    case 'load_ammo': return loadAmmo(s, a.iid, ev, a.fill ?? false);
     case 'move': return move(s, a.from, a.to, ev);
     case 'add_conveyor': return addConveyor(s, a, ev);
     case 'upgrade_conveyor': {
@@ -410,13 +410,13 @@ function buildTurret(s: State, id: keyof typeof TURRETS, slot: number | undefine
   ev.push({ type: 'turret_built', turret: id, iid, slot: idx });
 }
 
-function loadAmmo(s: State, iid: string, ev: GameEvent[]): void {
+function loadAmmo(s: State, iid: string, ev: GameEvent[], fill: boolean): void {
   const t = s.turrets[iid];
   if (!t) throw new GameError('That turret is gone.');
   const res = TURRETS[t.def].ammo;
   const room = C.AMMO_CAP - t.ammo;
   if (room <= 0) throw new GameError('Ammo is full.');
-  const n = Math.min(C.AMMO_LOAD_AMOUNT, room, s.res[res]);
+  const n = Math.min(fill ? room : C.AMMO_LOAD_AMOUNT, room, s.res[res]);
   if (n <= 0) throw new GameError(`No ${RESOURCES[res].name} to load.`);
   s.res[res] -= n;
   t.ammo += n;

@@ -13,7 +13,7 @@ export type Action =
   | { type: 'sell'; resource: ResourceId; units: number }
   | { type: 'buy'; resource: ResourceId; units: number }
   | { type: 'build_turret'; turret: TurretId; slot?: number }
-  | { type: 'load_ammo'; iid: string }
+  | { type: 'load_ammo'; iid: string; fill?: boolean }
   | { type: 'move'; from: number; to: number }
   | { type: 'add_conveyor'; from: NodeRef; to: NodeRef; resource: ResourceId }
   | { type: 'upgrade_conveyor'; id: string }

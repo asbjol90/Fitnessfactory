@@ -179,6 +179,7 @@ function roster(s: State): Node {
         return h(`div.row.between.small${ui.pick === t.iid ? '.picked' : ''}`,
           h('span', h('b', TURRETS[t.def].name), h('span.dim', ` · range ${cs.range} · ${cs.damage}×${cs.rate}/tick · `), icon(TURRETS[t.def].ammo, 12), h('span.dim', ` ${t.ammo}`)),
           h('div.row',
+            t.ammo < C.AMMO_CAP && s.res[TURRETS[t.def].ammo] > 0 && h('button.btn.sm', { onclick: () => act({ type: 'load_ammo', iid: t.iid, fill: true }) }, 'Fill'),
             placed && h('button.btn.sm', { onclick: () => act({ type: 'unplace_turret', iid: t.iid }) }, 'Pick up'),
             h('button.btn.sm', { onclick: () => { ui.mode = 'place'; ui.pick = t.iid; store.refresh(); toast(`Tap a field cell for the ${TURRETS[t.def].name}.`); } }, placed ? 'Move' : 'Place')));
       }));
@@ -249,4 +250,3 @@ export function raidPendingSheet(): void {
   sheet(close => h('div.stack', h('h2', 'Raiders at the gate'), h('p', 'Loot runs are blocked until you defend the factory.'),
     h('button.btn.primary.block', { onclick: () => { close(); location.hash = '#defence'; } }, 'Go to Defence')));
 }
-void C;

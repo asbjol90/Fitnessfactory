@@ -358,7 +358,7 @@ function openTurretSheet(iid: string): void {
       h('div.row', svg(`<svg width="96" height="64" viewBox="0 0 96 64">${turretArt(t.def)}</svg>`),
         h('div', h('h2', d.name), h('div.dim.small', `${d.blurb} Place it on the Defence tab.`))),
       h('div', h('div.row.between.small', h('span', 'Ammo'), h('span', `${t.ammo} / ${C.AMMO_CAP} ${RESOURCES[d.ammo].name}`)), h('div.bar', h('i', { style: { width: `${t.ammo / C.AMMO_CAP * 100}%` } }))),
-      h('button.btn.primary.block', { onclick: () => act({ type: 'load_ammo', iid }) }, `Load ${C.AMMO_LOAD_AMOUNT} ${RESOURCES[d.ammo].name} (have ${s.res[d.ammo]})`),
+      h('div.seg.c2', h('button.btn.primary', { onclick: () => act({ type: 'load_ammo', iid }) }, `Load ${C.AMMO_LOAD_AMOUNT}`), h('button.btn', { onclick: () => act({ type: 'load_ammo', iid, fill: true }) }, `Fill (have ${s.res[d.ammo]})`)),
       belts.length > 0 && h('div.stack', h('h3', 'Belts'), belts.map(c => beltRow(s, c))),
       armed('Demolish', () => { if (act({ type: 'demolish', kind: 'turret', iid })) close(); }),
     );

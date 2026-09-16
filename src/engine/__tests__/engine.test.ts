@@ -384,11 +384,11 @@ describe('round 1 mechanics', () => {
     s = run(s, rng, [{ type: 'build', building: 'munitions_press' }, { type: 'build_turret', turret: 'assault_rifle' }]);
     const press = Object.values(s.buildings).find(b => b.def === 'munitions_press')!;
     s = run(s, rng, [{ type: 'produce', iid: press.iid, recipe: 'cartridges', units: 3 }]);
-    expect(s.res.cartridges).toBe(12);
+    expect(s.res.cartridges).toBe(18);
     const t = Object.values(s.turrets)[0]!;
     s = run(s, rng, [{ type: 'load_ammo', iid: t.iid }]);
     expect(s.turrets[t.iid]!.ammo).toBe(10);
-    expect(s.res.cartridges).toBe(2);
+    expect(s.res.cartridges).toBe(8);
     s = run(s, rng, [{ type: 'research', tech: 'conveyor_systems' }]);
     const wrong = reduce(s, { type: 'add_conveyor', from: { kind: 'stock' }, to: { kind: 'turret', iid: t.iid }, resource: 'coke' }, { now: T0, rng: () => 0 });
     expect(wrong.error).toMatch(/fires Cartridges/);
