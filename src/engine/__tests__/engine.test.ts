@@ -284,6 +284,20 @@ describe('time', () => {
     const day = reduce(s, { type: 'tick' }, { now: T0 + DAY, rng }).state;
     expect(day.res.iron_ore).toBe(0); // 10 ore left after the furnace build → all smelted
   });
+  it('one belt per resource between two nodes; a second source is allowed', () => {
+    let { s, rng } = fresh();
+    s = give(s, { labor: 200, research: 100 }, { stone: 60, iron_ore: 40 });
+    s = run(s, rng, [{ type: 'build', building: 'furnace' }, { type: 'build', building: 'furnace' }, { type: 'research', tech: 'conveyor_systems' }]);
+    const [f1, f2] = Object.keys(s.buildings) as [string, string];
+    s = run(s, rng, [{ type: 'add_conveyor', from: { kind: 'stock' }, to: { kind: 'building', iid: f1 }, resource: 'iron_ore' }]);
+    const dup = reduce(s, { type: 'add_conveyor', from: { kind: 'stock' }, to: { kind: 'building', iid: f1 }, resource: 'iron_ore' }, { now: T0, rng });
+    expect(dup.error).toMatch(/already carries/);
+    s = run(s, rng, [
+      { type: 'add_conveyor', from: { kind: 'building', iid: f1 }, to: { kind: 'trader' }, resource: 'iron' },
+      { type: 'add_conveyor', from: { kind: 'building', iid: f2 }, to: { kind: 'trader' }, resource: 'iron' },
+    ]);
+    expect(s.conveyors).toHaveLength(3);
+  });
   it('hauling: unbelted machines pay 1 Labor per 4 units moved; belts remove it per resource', () => {
     let { s, rng } = fresh();
     s = give(s, { labor: 100, energy: 100, research: 100 }, { stone: 20, iron_ore: 40 });

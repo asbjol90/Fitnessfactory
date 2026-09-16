@@ -28,7 +28,8 @@ export function validateConveyor(s: State, from: NodeRef, to: NodeRef, resource:
     if (!t) throw new GameError('That turret is gone.');
     if (TURRETS[t.def].ammo !== resource) throw new GameError(`${TURRETS[t.def].name} fires ${RESOURCES[TURRETS[t.def].ammo].name}, not ${RESOURCES[resource].name}.`);
   }
-  if (s.conveyors.some(c => sameNode(c.to, to) && c.resource === resource)) throw new GameError('A belt already delivers that there.');
+  // One belt per resource between any two nodes. Different sources into the same machine are fine (two furnaces feeding one shop).
+  if (s.conveyors.some(c => sameNode(c.from, from) && sameNode(c.to, to) && c.resource === resource)) throw new GameError('A belt already carries that between these two. Upgrade it instead.');
 }
 
 export function removeConveyorsTouching(s: State, kind: 'building' | 'turret', iid: string): number {
