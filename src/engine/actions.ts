@@ -15,8 +15,8 @@ export type Action =
   | { type: 'build_turret'; turret: TurretId; slot?: number }
   | { type: 'load_ammo'; iid: string }
   | { type: 'move'; from: number; to: number }
-  | { type: 'add_conveyor'; from: NodeRef; to: NodeRef; resource: ResourceId; amount?: number }
-  | { type: 'set_conveyor_amount'; id: string; amount: number }
+  | { type: 'add_conveyor'; from: NodeRef; to: NodeRef; resource: ResourceId }
+  | { type: 'upgrade_conveyor'; id: string }
   | { type: 'remove_conveyor'; id: string }
   | { type: 'research'; tech: TechId }
   | { type: 'build_infra'; infra: InfraId }
@@ -46,7 +46,7 @@ export type GameEvent =
   | { type: 'turret_built'; turret: TurretId; iid: string; slot: number }
   | { type: 'ammo'; iid: string; added: number }
   | { type: 'moved'; from: number; to: number; beltsRemoved: number }
-  | { type: 'conveyor'; op: 'added' | 'removed' | 'changed'; id: string }
+  | { type: 'conveyor'; op: 'added' | 'removed' | 'upgraded'; id: string }
   | { type: 'tech'; tech: TechId }
   | { type: 'infra'; infra: InfraId }
   | { type: 'solar'; count: number }

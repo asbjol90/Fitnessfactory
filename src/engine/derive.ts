@@ -160,3 +160,22 @@ export function previewSession(s: State, kind: SessionKind, minutes: number, int
   }
   return out;
 }
+
+// ---------------------------------------------------------------- Belts & hauling
+import type { Conveyor } from './state';
+import type { Bag, ResourceId } from './data/core';
+export const beltCapacity = (c: Conveyor) => C.BELT_CAPACITY[c.tier - 1] ?? 3;
+export const beltUpgradeCost = (c: Conveyor): { res: Bag; gold: number } | null => (c.tier >= 3 ? null : (C.BELT_UPGRADE_COST as ReadonlyArray<{ res: Bag; gold: number }>)[c.tier] ?? null);
+/** Is `resource` delivered INTO building `iid` by a belt? */
+export const hasInputBelt = (s: State, iid: string, resource: ResourceId) =>
+  s.conveyors.some(c => c.to.kind === 'building' && c.to.iid === iid && c.resource === resource);
+/** Is `resource` carried OUT of building `iid` by a belt? */
+export const hasOutputBelt = (s: State, iid: string, resource: ResourceId) =>
+  s.conveyors.some(c => c.from.kind === 'building' && c.from.iid === iid && c.resource === resource);
+/** Hauling Labor for running `recipe` `units` times on `iid`: unbelted inputs and outputs cost 1 Labor per HAUL_UNITS_PER_LABOR units. */
+export function haulingLabor(s: State, iid: string, recipe: Recipe, units: number): number {
+  let moved = 0;
+  for (const [id, n] of Object.entries(recipe.inputs) as Array<[ResourceId, number]>) if (!hasInputBelt(s, iid, id)) moved += n * units;
+  for (const [id, n] of Object.entries(recipe.output) as Array<[ResourceId, number]>) if (!hasOutputBelt(s, iid, id)) moved += n * units;
+  return Math.ceil(moved / C.HAUL_UNITS_PER_LABOR);
+}

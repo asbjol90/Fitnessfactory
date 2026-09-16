@@ -3,7 +3,7 @@ import { HABIT_IDS, RESOURCE_IDS, STAT_IDS } from './data/core';
 import { C } from './constants';
 import type { BuildingId, InfraId, TurretId } from './data/factory';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const SAVE_KEY = 'fitnessfactory_state_v2';
 export const V1_SAVE_KEY = 'fitnessfactory_state_v1';
 
@@ -20,7 +20,7 @@ export interface BuildingInst { iid: string; def: BuildingId; upgrade: string | 
 export interface TurretInst { iid: string; def: TurretId; ammo: number; }
 export type SlotEntry = { kind: 'building'; iid: string } | { kind: 'turret'; iid: string };
 
-export interface Conveyor { id: string; resource: ResourceId; amount: number; from: NodeRef; to: NodeRef; }
+export interface Conveyor { id: string; resource: ResourceId; tier: 1 | 2 | 3; from: NodeRef; to: NodeRef; }
 
 // ---------------------------------------------------------------- Training log
 export type SessionKind = 'cardio' | 'strength' | 'flexibility';

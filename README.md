@@ -85,3 +85,12 @@ Everything else is 1:1 with the shipped v1 `index.html`.
 - Extra weekly contract slots can be bought for 25 / 40 / 60 Gold (resets Monday).
 - Palette pass: warm charcoal base and desaturated accents app-wide (tokens in `styles.css`); floor lighting is grime and small lamp pools instead of light cones. Stockpile is double width with five resource counters.
 - Factory dressing: overhead pipe run with valve and brackets, two slowly turning gear clusters, hazard-striped shipping lane and loading bay. Stockpile sheet grouped by tier with totals, value, and a Sell shortcut.
+
+## Belts & hauling (Sept 2026)
+
+- Belts come in three tiers: 3 / 5 / 10 units per day. Laying is free (tier 1); upgrade per belt from the machine's sheet — tier 2 costs 6 Iron + 4 Gravel, tier 3 costs 10 Iron + 2 Precision Components + 15 Gold. Tier shows on the floor (second rail, hazard edge).
+- Hauling: a machine pays 1 Labor per 4 units moved in or out for any resource that has no belt. Belt the input in and the output onward and production is hauling-free. Conveyor runs count too.
+- Bought contract slots now cost 10 / 15 / 20; deliver-contracts pay at least 1.5× the goods' sell value.
+- Natural stat levels 3–5 take more volume (speed/energy 600 / 1400 / 3000 minutes; strength 450 / 1100 / 2400 Labor; research 200 / 500 / 1000).
+- Logging a session vibrates and floats the result over the button.
+- Save version 4.

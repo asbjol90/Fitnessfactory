@@ -54,7 +54,15 @@ export const C = {
   EMERGENCY_ENERGY_BASE_COST: 40,
   EMERGENCY_ENERGY_STEP: 25,
   EMERGENCY_ENERGY_AMOUNT: 20,
-  DEFAULT_CONVEYOR_AMOUNT: 5,
+  /** Belt tiers: units per day, and the upgrade cost to reach the tier (index = tier-1; tier 1 is free to lay). */
+  BELT_CAPACITY: [3, 5, 10] as const,
+  BELT_UPGRADE_COST: [
+    { res: {}, gold: 0 },
+    { res: { iron: 6, gravel: 4 }, gold: 0 },
+    { res: { iron: 10, precision_components: 2 }, gold: 15 },
+  ] as const,
+  /** Hauling: Labor per this many units moved in or out of a machine with no belt for that resource. */
+  HAUL_UNITS_PER_LABOR: 4,
   SOLAR_ENERGY_PER_DAY: 3,
   /** Solar panels sit on the roof, not in a slot. Max per factory size level (index = level-1). */
   SOLAR_CAP: [1, 2, 3, 4] as const,
@@ -74,7 +82,7 @@ export const C = {
   CONTRACT_SLOTS_BASE: 2,
   CONTRACT_SLOTS_WITH_ENDURANCE: 3,
   /** Extra weekly contract slots for sale, price per slot in order. Resets Monday. */
-  CONTRACT_SLOT_PRICES: [25, 40, 60] as const,
+  CONTRACT_SLOT_PRICES: [10, 15, 20] as const,   // 1.0 CHANGE: was 25/40/60 — contracts pay 15–35, so buying must stay cheap
 
   // --- Avatar -------------------------------------------------------------
   /** Level 1..5 → multiplier. */

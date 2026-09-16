@@ -131,16 +131,20 @@ export function emptyPad(x: number, y: number, w: number, h: number, label: stri
 }
 
 /** Conveyor: rails, roller bed, moving chevrons. `d` is the path. */
-export function belt(d: string, id: string, stale: boolean): string {
+export function belt(d: string, id: string, stale: boolean, tier: 1 | 2 | 3 = 1): string {
   const c = stale ? 'var(--danger)' : 'var(--belt-rail)';
-  return `<path d="${d}" fill="none" stroke="${c}" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>` +
-    `<path id="${id}" d="${d}" fill="none" stroke="url(#p-rollers)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>` +
-    `<path d="${d}" fill="none" stroke="var(--belt-chevron)" stroke-width="3" stroke-dasharray="3 9" stroke-linecap="round" class="belt-dash${stale ? ' stale' : ''}"/>`;
+  const rail = tier === 3 ? 17 : tier === 2 ? 15 : 13;
+  const bed = tier === 3 ? 12 : tier === 2 ? 10 : 9;
+  return (tier === 3 ? `<path d="${d}" fill="none" stroke="var(--hazard)" stroke-width="${rail + 3}" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>` : '') +
+    `<path d="${d}" fill="none" stroke="${c}" stroke-width="${rail}" stroke-linecap="round" stroke-linejoin="round"/>` +
+    (tier >= 2 ? `<path d="${d}" fill="none" stroke="var(--steel-lt)" stroke-width="${rail - 2}" stroke-linecap="round" stroke-linejoin="round" opacity=".35"/>` : '') +
+    `<path id="${id}" d="${d}" fill="none" stroke="url(#p-rollers)" stroke-width="${bed}" stroke-linecap="round" stroke-linejoin="round"/>` +
+    `<path d="${d}" fill="none" stroke="var(--belt-chevron)" stroke-width="3" stroke-dasharray="3 9" stroke-linecap="round" class="belt-dash${stale ? ' stale' : ''}" style="animation-duration:${tier === 3 ? .7 : tier === 2 ? .95 : 1.2}s"/>`;
 }
 
 /** Items riding a belt, following the roller path. */
 export function beltItems(pathId: string, resource: ResourceId, amount: number): string {
-  const n = Math.max(1, Math.min(4, Math.ceil(amount / 4)));
+  const n = Math.max(1, Math.min(4, Math.ceil(amount / 3)));
   const dur = 4.2;
   return Array.from({ length: n }, (_, k) =>
     `<g><animateMotion dur="${dur}s" repeatCount="indefinite" begin="${(k * (dur / n) - dur).toFixed(2)}s" rotate="0"><mpath href="#${pathId}"/></animateMotion>` +

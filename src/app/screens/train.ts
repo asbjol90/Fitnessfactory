@@ -24,13 +24,27 @@ export function renderTrain(s: State): Node {
     return h('p', 'About ', h('b.c-cardio', `${pv.lootUnits} items`), `, ${Math.round((pv.premiumChance ?? 0) * 100)}% premium find, ${Math.round((pv.steelChance ?? 0) * 100)}% Hardened Steel`);
   })();
 
-  const logBtn = h('button.btn.primary.block', `Log ${form.minutes} min ${form.kind}`, {
+  const logBtn = h('button.btn.primary.block.log-btn', `Log ${form.minutes} min ${form.kind}`, {
     onclick: () => {
       let captured: GameEvent[] = [];
       const off = store.subscribe((_, ev) => { captured = ev; });
       const ok = act({ type: 'log_session', kind: form.kind, minutes: form.minutes, intensity: form.intensity, zone: form.kind === 'cardio' ? form.zone : undefined });
       off();
-      if (ok) lastResult = { text: store.state.sessions[0]?.result ?? '', events: captured };
+      if (ok) {
+        lastResult = { text: store.state.sessions[0]?.result ?? '', events: captured };
+        const loot = captured.find(e => e.type === 'loot');
+        const gain = captured.find(e => e.type === 'gain');
+        const failed = loot && loot.type === 'loot' && loot.outcome === 'failed';
+        navigator.vibrate?.(failed ? [40, 60, 40] : loot ? [20, 40, 60] : 30);
+        const label = loot && loot.type === 'loot'
+          ? (failed ? 'Empty-handed' : `+${Object.values(loot.yield).reduce((a, b) => a + b, 0)} items`)
+          : gain && gain.type === 'gain' ? `+${gain.amount} ${gain.pool}` : '';
+        if (label) {
+          const el = h('span.float-gain', { style: failed ? { color: 'var(--danger)' } : {} }, label);
+          document.querySelector('.log-btn')?.append(el);
+          setTimeout(() => el.remove(), 1200);
+        }
+      }
     },
   });
 

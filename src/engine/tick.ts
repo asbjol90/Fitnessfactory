@@ -3,7 +3,7 @@ import { C } from './constants';
 import { RESOURCES } from './data/core';
 import { BUILDINGS } from './data/factory';
 import { rollContracts } from './contracts';
-import { activeRecipes, dailyEnergyBalance, sellBonus, sellLaborCost } from './derive';
+import { activeRecipes, beltCapacity, dailyEnergyBalance, sellBonus, sellLaborCost } from './derive';
 import { runRecipe } from './production';
 import { dayKey, daysBetween, emptyWeekly, weekKey, type Rng, type State } from './state';
 
@@ -42,8 +42,9 @@ function runConveyors(s: State, rng: Rng): Array<{ id: string; moved: number }> 
   const report: Array<{ id: string; moved: number }> = [];
   for (const c of s.conveyors) {
     let moved = 0;
+    const cap = beltCapacity(c);
     if (c.to.kind === 'trader') {
-      const units = Math.min(c.amount, s.res[c.resource]);
+      const units = Math.min(cap, s.res[c.resource]);
       const laborEach = sellLaborCost(s);
       const affordable = laborEach > 0 ? Math.min(units, Math.floor(s.labor / laborEach)) : units;
       if (affordable > 0) {
@@ -57,14 +58,14 @@ function runConveyors(s: State, rng: Rng): Array<{ id: string; moved: number }> 
       const t = s.turrets[c.to.iid];
       if (t) {
         const room = C.AMMO_CAP - t.ammo;
-        const units = Math.min(c.amount, s.res[c.resource], room);
+        const units = Math.min(cap, s.res[c.resource], room);
         if (units > 0) { s.res[c.resource] -= units; t.ammo += units; moved = units; }
       }
     } else if (c.to.kind === 'building') {
       const b = s.buildings[c.to.iid];
       if (b) {
         const recipe = BUILDINGS[b.def].recipes.length ? findRecipeFor(s, b.iid, c.resource) : null;
-        if (recipe) moved = runRecipe(s, b.iid, recipe, c.amount, rng, /*strict*/ false).units;
+        if (recipe) moved = runRecipe(s, b.iid, recipe, cap, rng, /*strict*/ false).units;
       }
     }
     report.push({ id: c.id, moved });

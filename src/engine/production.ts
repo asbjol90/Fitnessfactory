@@ -1,9 +1,10 @@
 import type { Bag } from './data/core';
-import { activeRecipes } from './derive';
+import { activeRecipes, haulingLabor } from './derive';
 import { GameError } from './errors';
 import { addBag, addToBag, subBag, timesAffordable, type Rng, type State } from './state';
 
 export interface ProduceResult { units: number; output: Bag; bonus: Bag; }
+export { haulingLabor };
 
 /**
  * Run `recipeId` on building `iid` up to `want` times. In strict mode (manual
@@ -18,27 +19,31 @@ export function runRecipe(s: State, iid: string, recipeId: string, want: number,
   if (!Number.isInteger(want) || want <= 0) throw new GameError('Choose how many to make.');
 
   const byMaterials = timesAffordable(s.res, recipe.inputs);
-  const byLabor = recipe.labor > 0 ? Math.floor(s.labor / recipe.labor) : Infinity;
   const byEnergy = recipe.energy > 0 ? Math.floor(s.energy / recipe.energy) : Infinity;
-  const units = Math.min(want, byMaterials, byLabor, byEnergy);
+  // Labor includes hauling for anything not on a belt; find the largest count we can pay for.
+  const laborFor = (n: number) => recipe.labor * n + haulingLabor(s, iid, recipe, n);
+  let units = Math.min(want, byMaterials, byEnergy);
+  while (units > 0 && laborFor(units) > s.labor) units--;
 
   if (strict && units < want) {
     if (byMaterials < want) throw new GameError('Not enough materials.');
-    if (byLabor < want) throw new GameError(`Needs ${recipe.labor * want} Labor.`);
-    throw new GameError(`Needs ${recipe.energy * want} Energy.`);
+    if (byEnergy < want) throw new GameError(`Needs ${recipe.energy * want} Energy.`);
+    const haul = haulingLabor(s, iid, recipe, want);
+    throw new GameError(`Needs ${laborFor(want)} Labor${haul ? ` (${haul} of it hauling — lay belts to skip that)` : ''}.`);
   }
   if (units <= 0) return { units: 0, output: {}, bonus: {} };
 
+  const labor = laborFor(units);
   subBag(s.res, recipe.inputs, units);
-  s.labor -= recipe.labor * units;
+  s.labor -= labor;
   s.energy -= recipe.energy * units;
   addBag(s.res, recipe.output, units);
 
-  // Strength stat grows with Labor *spent*.
-  s.avatar.volume.strength += recipe.labor * units;
+  // Strength stat grows with Labor *spent*, hauling included.
+  s.avatar.volume.strength += labor;
 
   const spend = (s.weekly.spendIn[b.def] ??= { labor: 0, energy: 0 });
-  spend.labor += recipe.labor * units;
+  spend.labor += labor;
   spend.energy += recipe.energy * units;
 
   const output: Bag = {};

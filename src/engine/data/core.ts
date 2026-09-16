@@ -88,11 +88,12 @@ export type StatId = 'speed' | 'strength' | 'energy' | 'research';
 export const STAT_IDS: StatId[] = ['speed', 'strength', 'energy', 'research'];
 
 /** Cumulative-volume thresholds for natural level 1..5. */
+// 1.0 CHANGE: levels 3–5 pushed out (were 500/1000/2000 etc.) — natural max was arriving before tier-2 gear.
 export const STAT_THRESHOLDS: Record<StatId, readonly number[]> = {
-  speed: [0, 180, 500, 1000, 2000],
-  strength: [0, 150, 400, 900, 1800],
-  energy: [0, 180, 500, 1000, 2000],
-  research: [0, 50, 150, 350, 700],
+  speed: [0, 200, 600, 1400, 3000],
+  strength: [0, 150, 450, 1100, 2400],
+  energy: [0, 200, 600, 1400, 3000],
+  research: [0, 60, 200, 500, 1000],
 };
 
 export interface GearDef { stat: StatId; name: string; material: ResourceId; tierCosts: readonly number[]; }

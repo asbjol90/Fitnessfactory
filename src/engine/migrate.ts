@@ -1,7 +1,7 @@
 import { STAT_IDS, type StatId, type ResourceId, type TechId } from './data/core';
 import { BUILDINGS, TURRETS, type BuildingId, type InfraId, type TurretId } from './data/factory';
 import { RESOURCE_IDS } from './data/core';
-import { emptyHabitCounts, initialState, SAVE_KEY, SAVE_VERSION, V1_SAVE_KEY, type SlotEntry, type State } from './state';
+import { emptyHabitCounts, initialState, SAVE_KEY, SAVE_VERSION, V1_SAVE_KEY, type Conveyor, type SlotEntry, type State } from './state';
 
 /* v1 shape, as read from the shipped index.html. Everything optional: old saves vary. */
 interface V1 {
@@ -94,7 +94,8 @@ export function migrateV1(raw: unknown, now: number): State {
     if (!RESOURCE_IDS.includes(c.resource as ResourceId)) continue;
     const to = resolveTarget(s, c.to, v1slots);
     if (!to) continue;
-    s.conveyors.push({ id: `c${s.nextId++}`, resource: c.resource as ResourceId, amount: Math.max(1, num(c.amount, 5)), from: { kind: 'stock' }, to });
+    const a = num(c.amount, 5);
+    s.conveyors.push({ id: `c${s.nextId++}`, resource: c.resource as ResourceId, tier: a <= 3 ? 1 : a <= 5 ? 2 : 3, from: { kind: 'stock' }, to });
   }
 
   s.lootRunsCompleted = num(v.lootRunsCompleted);
@@ -186,6 +187,13 @@ export function upgradeSave(raw: unknown): State | null {
     }
     // Belts feeding turrets whose ammo type changed are now wrong; drop them (ammo already loaded stays).
     s.conveyors = s.conveyors.filter(c => !(c.to.kind === 'turret' && s.turrets[c.to.iid] && TURRETS[s.turrets[c.to.iid]!.def].ammo !== c.resource));
+  }
+  if (s.version < 4) {
+    for (const c of s.conveyors as Array<Conveyor & { amount?: number }>) {
+      const a = c.amount ?? 3;
+      c.tier = a <= 3 ? 1 : a <= 5 ? 2 : 3;
+      delete c.amount;
+    }
   }
   s.version = SAVE_VERSION;
   return s;

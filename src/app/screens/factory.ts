@@ -8,7 +8,7 @@ import { belt, beltItems, emptyPad, environment, floorDefs, pad, stockRack } fro
 import { isBuildingId, isTurretId, openBuildingInfo, openTurretInfo } from './info';
 import {
   BUILDINGS, BUILDING_IDS, C, INFRA, RESOURCES, SOLAR_PANEL, TURRETS, TURRET_IDS, ZONES,
-  activeDrain, activeRecipes, buildingBlocker, buildingLabel, dailyEnergyBalance, factorySize, freshRaid, hasTech, nextFactorySize,
+  activeDrain, activeRecipes, beltCapacity, beltUpgradeCost, buildingBlocker, buildingLabel, dailyEnergyBalance, factorySize, freshRaid, hasTech, haulingLabor, nextFactorySize,
   slotIsWall, solarCap, staleConveyors, timesAffordable, workshopUnlocked,
   type BuildingInst, type Conveyor, type NodeRef, type RaidRecord, type ResourceId, type ResourceTier, type State, type TurretInst,
 } from '../../engine';
@@ -199,7 +199,7 @@ function beltMarkup(c: Conveyor, nodes: Placed[], stale: boolean, idx: number, l
   const d = rounded(pts, 10);
   const id = `belt${idx}`;
   void lineY;
-  return `<g class="belt-g" data-belt="${c.id}">${belt(d, id, stale)}${beltItems(id, c.resource, c.amount)}</g>`;
+  return `<g class="belt-g" data-belt="${c.id}">${belt(d, id, stale, c.tier)}${beltItems(id, c.resource, beltCapacity(c))}</g>`;
 }
 /** Polyline with rounded corners. */
 function rounded(pts: Array<[number, number]>, r: number): string {
@@ -328,10 +328,11 @@ function openBuildingSheet(iid: string): void {
 
 function recipeRow(s: State, b: BuildingInst, recipeId: string): Node {
   const r = activeRecipes(b).find(x => x.id === recipeId)!;
-  const max = Math.max(0, Math.min(timesAffordable(s.res, r.inputs), r.labor ? Math.floor(s.labor / r.labor) : 99, r.energy ? Math.floor(s.energy / r.energy) : 99, 99));
+  let max = Math.max(0, Math.min(timesAffordable(s.res, r.inputs), r.energy ? Math.floor(s.energy / r.energy) : 99, 99));
+  while (max > 0 && r.labor * max + haulingLabor(s, b.iid, r, max) > s.labor) max--;
   let n = Math.min(Math.max(1, max), 5);
   const out = h('span.dim.small');
-  const upd = () => { out.textContent = `→ ${bagText(r.output, n)} · costs ${r.labor * n} Labor, ${r.energy * n} Energy`; };
+  const upd = () => { const haul = haulingLabor(s, b.iid, r, n); out.textContent = `→ ${bagText(r.output, n)} · costs ${r.labor * n + haul} Labor (${haul} hauling), ${r.energy * n} Energy`; };
   upd();
   const outIds = Object.keys(r.output) as ResourceId[];
   const stockLine = h('div.row.wrap', { style: { gap: '6px' } }, h('span.dim.small', 'In stock:'), outIds.map(id => h('span.chip', icon(id, 14), `${s.res[id]} ${RESOURCES[id].name}`)));
@@ -377,22 +378,26 @@ function openConnectSheet(s: State, from: NodeRef, to: NodeRef): void {
   if (to.kind === 'turret') { const t = s.turrets[to.iid]; accept = t ? [TURRETS[t.def].ammo] : []; }
   const options = [...new Set(supply.filter(r => accept.includes(r)))];
   let resource: ResourceId | null = options[0] ?? null;
-  let amount: number = C.DEFAULT_CONVEYOR_AMOUNT;
   sheet(close => h('div.stack',
     h('h2', 'New belt'),
     h('p.dim.small', `${nodeName(s, from)} → ${nodeName(s, to)}`),
     options.length === 0 ? h('div.empty', 'Nothing can travel between these two.') : h('div.stack',
       h('div.field', h('label', 'Carries'), h('div.seg.c2', options.map(r => h(`button.btn.sm${resource === r ? '.on' : ''}`, { onclick: (e: Event) => { resource = r; (e.currentTarget as HTMLElement).parentElement!.querySelectorAll('.btn').forEach(b => b.classList.remove('on')); (e.currentTarget as HTMLElement).classList.add('on'); } }, icon(r, 14), RESOURCES[r].name)))),
-      h('div.field', h('label', 'Per day'), stepper(amount, 1, 99, v => { amount = v; })),
-      h('p.dim.small', to.kind === 'trader' ? 'Sells that many each day.' : to.kind === 'turret' ? 'Tops up ammo each day.' : 'Runs the recipe that many times each day, only as far as Labor, Energy and materials allow.'),
-      h('button.btn.primary.block', { onclick: () => { if (resource && act({ type: 'add_conveyor', from, to, resource, amount })) close(); } }, 'Lay belt')),
+      h('p.dim.small', `A new belt is tier 1: ${C.BELT_CAPACITY[0]} units a day. ${to.kind === 'trader' ? 'It sells them.' : to.kind === 'turret' ? 'It tops up ammo.' : 'It runs the recipe that often, as far as Labor, Energy and materials allow — and the machine no longer pays hauling for this resource.'} Upgrade it later from the machine's sheet.`),
+      h('button.btn.primary.block', { onclick: () => { if (resource && act({ type: 'add_conveyor', from, to, resource })) close(); } }, 'Lay belt')),
   ));
 }
 
 function beltRow(s: State, c: Conveyor): Node {
-  return h('div.row.between.small',
-    h('span', icon(c.resource, 14), ` ${c.amount}/day  ${nodeName(s, c.from)} → ${nodeName(s, c.to)}`),
-    h('button.btn.sm', { onclick: () => act({ type: 'remove_conveyor', id: c.id }) }, 'Remove'));
+  const cost = beltUpgradeCost(c);
+  return h('div.card.flat.stack', { style: { gap: '6px' } },
+    h('div.row.between.small',
+      h('span', icon(c.resource, 14), ` ${nodeName(s, c.from)} → ${nodeName(s, c.to)}`),
+      h('span.dim', `Tier ${c.tier} · ${beltCapacity(c)}/day`)),
+    h('div.row.between',
+      cost ? costChips(s, { res: cost.res, gold: cost.gold }) : h('span.dim.small', 'Top tier'),
+      h('div.row', cost && h('button.btn.sm', { onclick: () => act({ type: 'upgrade_conveyor', id: c.id }) }, `Upgrade → ${(C.BELT_CAPACITY as readonly number[])[c.tier] ?? ''}/day`),
+        h('button.btn.sm', { onclick: () => act({ type: 'remove_conveyor', id: c.id }) }, 'Remove'))));
 }
 
 const STOCK_GROUPS: Array<{ tier: ResourceTier; title: string; blurb: string }> = [

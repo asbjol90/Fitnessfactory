@@ -30,7 +30,7 @@ const c = (id: string, title: string, reward: number, goal: ContractGoal, gate: 
  */
 export const CONTRACTS: ContractDef[] = [
   // Always available (9)
-  c('deliver_ore', 'Deliver 20 Iron Ore', 15, { kind: 'deliver', resource: 'iron_ore', amount: 20 }),
+  c('deliver_ore', 'Deliver 20 Iron Ore', 30, { kind: 'deliver', resource: 'iron_ore', amount: 20 }),
   c('refine_iron', 'Smelt 8 Iron this week', 18, { kind: 'produce', resource: 'iron', amount: 8 }),
   c('labor_60', 'Earn 60 Labor this week', 15, { kind: 'earn', pool: 'labor', amount: 60 }),
   c('energy_40', 'Earn 40 Energy this week', 15, { kind: 'earn', pool: 'energy', amount: 40 }),
@@ -38,7 +38,7 @@ export const CONTRACTS: ContractDef[] = [
   c('stock_energy', 'Hold 35 Energy', 18, { kind: 'stockpile', resource: 'energy', amount: 35 }),
   c('find_premium', 'Find a premium resource', 20, { kind: 'find_premium', amount: 1 }),
   c('venture_ridge', 'Venture past the Outskirts twice', 20, { kind: 'venture', minTier: 2, amount: 2 }),
-  c('deliver_gravel', 'Deliver 15 Gravel', 16, { kind: 'deliver', resource: 'gravel', amount: 15 }),
+  c('deliver_gravel', 'Deliver 15 Gravel', 60, { kind: 'deliver', resource: 'gravel', amount: 15 }),
   // Building-gated (8)
   c('prod_silver', 'Refine 3 Silver', 20, { kind: 'produce', resource: 'refined_silver', amount: 3 }, { kind: 'building', building: 'refinery' }),
   c('prod_bullion', 'Cast 3 Gold Bullion', 24, { kind: 'produce', resource: 'gold_bullion', amount: 3 }, { kind: 'building', building: 'refinery' }),
@@ -55,7 +55,7 @@ export const CONTRACTS: ContractDef[] = [
   // Upgrade-gated (3)
   c('blast_push', 'Push 70 Energy through the Blast Furnace', 26, { kind: 'spend_in', building: 'furnace', pool: 'energy', amount: 70 }, { kind: 'upgrade', building: 'furnace', upgrade: 'blast' }),
   c('forge_push', 'Push 90 Labor through the Forge Works', 26, { kind: 'spend_in', building: 'furnace', pool: 'labor', amount: 90 }, { kind: 'upgrade', building: 'furnace', upgrade: 'forge' }),
-  c('deliver_tar', 'Deliver 10 Coal Tar', 18, { kind: 'deliver', resource: 'coal_tar', amount: 10 }, { kind: 'upgrade', building: 'coke_oven', upgrade: 'byproduct' }),
+  c('deliver_tar', 'Deliver 10 Coal Tar', 85, { kind: 'deliver', resource: 'coal_tar', amount: 10 }, { kind: 'upgrade', building: 'coke_oven', upgrade: 'byproduct' }),
   // Research-gated (1)
   c('sell_iron', 'Sell 15 Iron', 20, { kind: 'sell', resource: 'iron', amount: 15 }, { kind: 'tech', tech: 'trade_network' }),
 ];

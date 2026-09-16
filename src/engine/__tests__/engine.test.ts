@@ -152,10 +152,10 @@ describe('training → resources', () => {
 describe('avatar levels', () => {
   it('thresholds map to levels 1..5 and gear caps at 5', () => {
     expect(naturalLevel('speed', 0)).toBe(1);
-    expect(naturalLevel('speed', 180)).toBe(2);
-    expect(naturalLevel('speed', 2000)).toBe(5);
+    expect(naturalLevel('speed', 200)).toBe(2);
+    expect(naturalLevel('speed', 3000)).toBe(5);
     let { s, rng } = fresh();
-    s = { ...s, avatar: { ...s.avatar, volume: { ...s.avatar.volume, speed: 2000 }, gear: { ...s.avatar.gear, speed: 3 } } };
+    s = { ...s, avatar: { ...s.avatar, volume: { ...s.avatar.volume, speed: 3000 }, gear: { ...s.avatar.gear, speed: 3 } } };
     expect(effectiveLevel(s, 'speed')).toBe(5);
     void rng;
   });
@@ -180,13 +180,13 @@ describe('factory', () => {
     expect(s.labor).toBe(80);
     s = run(s, rng, [{ type: 'produce', iid, recipe: 'smelt', units: 5 }]);
     expect(s.res.iron).toBe(25);
-    expect(s.labor).toBe(65);
+    expect(s.labor).toBe(80 - 15 - 3); // 15 recipe + 3 hauling (10 units / 4, rounded up)
     expect(s.energy).toBe(90);
     s = run(s, rng, [{ type: 'upgrade_building', iid, upgrade: 'blast' }]);
     const second = reduce(s, { type: 'upgrade_building', iid, upgrade: 'forge' }, { now: T0, rng });
     expect(second.error).toMatch(/already took/);
     s = run(s, rng, [{ type: 'produce', iid, recipe: 'smelt', units: 1 }]);
-    expect(s.labor).toBe(64); // blast: 1 labor
+    expect(s.labor).toBe(62 - 1 - 1); // blast: 1 labor + 1 hauling
     const before = s.gold;
     s = run(s, rng, [{ type: 'demolish', kind: 'building', iid }]);
     // furnace value: 15 stone + 10 ore = 25; blast: 15 iron×4 + 30 gold = 90 → 115 × 0.8 = 92
@@ -254,8 +254,8 @@ describe('time', () => {
     s = run(s, rng, [{ type: 'build', building: 'furnace' }, { type: 'research', tech: 'conveyor_systems' }]);
     const iid = Object.keys(s.buildings)[0]!;
     s = run(s, rng, [
-      { type: 'add_conveyor', from: { kind: 'stock' }, to: { kind: 'building', iid }, resource: 'iron_ore', amount: 5 },
-      { type: 'add_conveyor', from: { kind: 'building', iid }, to: { kind: 'trader' }, resource: 'iron', amount: 5 },
+      { type: 'add_conveyor', from: { kind: 'stock' }, to: { kind: 'building', iid }, resource: 'iron_ore' },
+      { type: 'add_conveyor', from: { kind: 'building', iid }, to: { kind: 'trader' }, resource: 'iron' },
     ]);
     expect(dailyEnergyBalance(s).drain).toBe(2);
     const r = reduce(s, { type: 'tick' }, { now: T0 + DAY, rng });
@@ -266,6 +266,36 @@ describe('time', () => {
     expect(r.state.res.iron).toBe(0);
     expect(r.state.gold).toBe(100 + 8);
     expect(r.state.labor).toBe(80 - 2);
+  });
+  it('belts start at tier 1 and upgrade for materials; capacity follows the tier', () => {
+    let { s, rng } = fresh();
+    s = give(s, { labor: 100, research: 100, gold: 100 }, { stone: 20, iron_ore: 20, iron: 30, gravel: 10, precision_components: 2 });
+    s = run(s, rng, [{ type: 'build', building: 'furnace' }, { type: 'research', tech: 'conveyor_systems' }]);
+    const iid = Object.keys(s.buildings)[0]!;
+    s = run(s, rng, [{ type: 'add_conveyor', from: { kind: 'stock' }, to: { kind: 'building', iid }, resource: 'iron_ore' }]);
+    const id = s.conveyors[0]!.id;
+    expect(s.conveyors[0]!.tier).toBe(1);
+    s = run(s, rng, [{ type: 'upgrade_conveyor', id }, { type: 'upgrade_conveyor', id }]);
+    expect(s.conveyors[0]!.tier).toBe(3);
+    expect(s.res.iron).toBe(30 - 6 - 10); expect(s.gold).toBe(85);
+    expect(reduce(s, { type: 'upgrade_conveyor', id }, { now: T0, rng }).error).toMatch(/top tier/);
+    // A day passes with 40 energy: tier-3 belt runs up to 10 smelts.
+    s = { ...s, energy: 40 };
+    const day = reduce(s, { type: 'tick' }, { now: T0 + DAY, rng }).state;
+    expect(day.res.iron_ore).toBe(0); // 10 ore left after the furnace build → all smelted
+  });
+  it('hauling: unbelted machines pay 1 Labor per 4 units moved; belts remove it per resource', () => {
+    let { s, rng } = fresh();
+    s = give(s, { labor: 100, energy: 100, research: 100 }, { stone: 20, iron_ore: 40 });
+    s = run(s, rng, [{ type: 'build', building: 'furnace' }, { type: 'research', tech: 'conveyor_systems' }]);
+    const iid = Object.keys(s.buildings)[0]!;
+    // 4 smelts: 4 ore in + 4 iron out = 8 units → 2 hauling; 3×4 = 12 recipe labor → 14
+    const a = run(s, rng, [{ type: 'produce', iid, recipe: 'smelt', units: 4 }]);
+    expect(a.labor).toBe(80 - 14);
+    // Belt the input: only the 4 iron out is hauled → 1
+    s = run(s, rng, [{ type: 'add_conveyor', from: { kind: 'stock' }, to: { kind: 'building', iid }, resource: 'iron_ore' }]);
+    const b = run(s, rng, [{ type: 'produce', iid, recipe: 'smelt', units: 4 }]);
+    expect(b.labor).toBe(80 - 13);
   });
 });
 
@@ -279,7 +309,7 @@ describe('contracts', () => {
     s = give(s, {}, { iron_ore: 25 });
     expect(contractProgress(s, 'deliver_ore').ready).toBe(true);
     s = run(s, rng, [{ type: 'claim_contract', id: 'deliver_ore' }]);
-    expect(s.gold).toBe(15);
+    expect(s.gold).toBe(30);
     expect(s.res.iron_ore).toBe(5);
     expect(s.contracts.completedTotal).toBe(1);
     const again = reduce(s, { type: 'claim_contract', id: 'deliver_ore' }, { now: T0, rng });
@@ -340,7 +370,7 @@ describe('round 1 mechanics', () => {
     (v2['turrets'] as Record<string, unknown>)['t9'] = { iid: 't9', def: 'assault_rifle', ammo: 6 };
     (v2['conveyors'] as unknown[]).push({ id: 'c9', resource: 'coke', amount: 5, from: { kind: 'stock' }, to: { kind: 'turret', iid: 't9' } });
     const up = upgradeSave(v2)!;
-    expect(up.version).toBe(3);
+    expect(up.version).toBe(4);
     expect(up.solar).toBe(1);
     expect(up.slots[0]).toBeNull();
     expect(up.buildings['b9']).toBeUndefined();
@@ -357,10 +387,10 @@ describe('bought contract slots', () => {
     expect(s.contracts.slots).toHaveLength(2);
     s = run(s, rng, [{ type: 'buy_contract_slot' }]);
     expect(s.contracts.slots).toHaveLength(3);
-    expect(s.gold).toBe(175);
+    expect(s.gold).toBe(190);
     s = run(s, rng, [{ type: 'buy_contract_slot' }, { type: 'buy_contract_slot' }]);
     expect(s.contracts.slots).toHaveLength(5);
-    expect(s.gold).toBe(75);
+    expect(s.gold).toBe(155);
     expect(reduce(s, { type: 'buy_contract_slot' }, { now: T0, rng }).error).toMatch(/No more/);
     const next = reduce(s, { type: 'tick' }, { now: T0 + 7 * DAY, rng }).state;
     expect(next.contracts.bought).toBe(0);

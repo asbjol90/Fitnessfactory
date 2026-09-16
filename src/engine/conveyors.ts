@@ -1,4 +1,3 @@
-import { C } from './constants';
 import { RESOURCES, type ResourceId } from './data/core';
 import { TURRETS } from './data/factory';
 import { activeRecipes } from './derive';
@@ -56,4 +55,3 @@ function validateConveyorTarget(s: State, c: Conveyor): void {
   }
 }
 
-export const defaultConveyorAmount = () => C.DEFAULT_CONVEYOR_AMOUNT;

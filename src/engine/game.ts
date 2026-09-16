@@ -1,7 +1,7 @@
 import type { Action, GameEvent } from './actions';
 import { C } from './constants';
 import { contractProgress, payContract, topUpContracts } from './contracts';
-import { defaultConveyorAmount, removeConveyorsTouching, validateConveyor } from './conveyors';
+import { removeConveyorsTouching, validateConveyor } from './conveyors';
 import { contractById } from './data/contracts';
 import {
   AVATAR_IDS, FACTORY_SIZES, GEAR, GEAR_DROP_ZONES, HABITS, PREMIUM_WEIGHTS, RESOURCES, STAT_IDS, TECHS,
@@ -9,7 +9,7 @@ import {
 } from './data/core';
 import { BUILDINGS, INFRA, SOLAR_PANEL, TURRETS, type Cost } from './data/factory';
 import {
-  buildingBlocker, effectiveLevel, energyBonus, freeSlots, gearUpgradeCost, laborBonus, lootBonus, naturalLevel,
+  beltUpgradeCost, buildingBlocker, effectiveLevel, energyBonus, freeSlots, gearUpgradeCost, laborBonus, lootBonus, naturalLevel,
   nextContractSlotPrice, nextFactorySize, sellBonus, sellLaborCost, slotIsWall, solarCap, statMult, techAvailable,
 } from './derive';
 import { GameError } from './errors';
@@ -61,12 +61,14 @@ function apply(s: State, a: Action, ctx: Ctx, ev: GameEvent[]): void {
     case 'load_ammo': return loadAmmo(s, a.iid, ev);
     case 'move': return move(s, a.from, a.to, ev);
     case 'add_conveyor': return addConveyor(s, a, ev);
-    case 'set_conveyor_amount': {
+    case 'upgrade_conveyor': {
       const c = s.conveyors.find(c => c.id === a.id);
       if (!c) throw new GameError('That belt is gone.');
-      if (!Number.isInteger(a.amount) || a.amount < 1 || a.amount > 99) throw new GameError('Belt amount must be 1–99 per day.');
-      c.amount = a.amount;
-      ev.push({ type: 'conveyor', op: 'changed', id: c.id });
+      const cost = beltUpgradeCost(c);
+      if (!cost) throw new GameError('This belt is already top tier.');
+      payCost(s, { res: cost.res, gold: cost.gold, labor: 0, research: 0 });
+      c.tier = (c.tier + 1) as 1 | 2 | 3;
+      ev.push({ type: 'conveyor', op: 'upgraded', id: c.id });
       return;
     }
     case 'remove_conveyor': {
@@ -398,10 +400,8 @@ function move(s: State, from: number, to: number, ev: GameEvent[]): void {
 function addConveyor(s: State, a: Extract<Action, { type: 'add_conveyor' }>, ev: GameEvent[]): void {
   if (!s.techs.includes('conveyor_systems')) throw new GameError('Research Conveyor Systems first.');
   validateConveyor(s, a.from, a.to, a.resource);
-  const amount = a.amount ?? defaultConveyorAmount();
-  if (!Number.isInteger(amount) || amount < 1 || amount > 99) throw new GameError('Belt amount must be 1–99 per day.');
   const id = newId(s, 'c');
-  s.conveyors.push({ id, resource: a.resource, amount, from: a.from, to: a.to });
+  s.conveyors.push({ id, resource: a.resource, tier: 1, from: a.from, to: a.to });
   ev.push({ type: 'conveyor', op: 'added', id });
 }
 
