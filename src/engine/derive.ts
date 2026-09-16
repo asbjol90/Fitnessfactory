@@ -80,7 +80,6 @@ export function gateOpen(s: State, g: Gate): boolean {
 }
 /** Why a building can't be built right now, or null if it can be (ignoring cost). */
 export function buildingBlocker(s: State, def: BuildingDef): string | null {
-  if (hasBuilding(s, def.id)) return 'Already built';
   if (def.floor === 'workshop' && !workshopUnlocked(s)) return 'Workshop floor locked';
   const g = def.gate;
   if (!gateOpen(s, g)) {
@@ -90,6 +89,16 @@ export function buildingBlocker(s: State, def: BuildingDef): string | null {
   return null;
 }
 
+/** "Furnace", or "Furnace 2" when there are several of the same kind. */
+export function buildingLabel(s: State, iid: string): string {
+  const b = s.buildings[iid];
+  if (!b) return '?';
+  const def = BUILDINGS[b.def];
+  const u = b.upgrade ? def.upgrades.find(u => u.id === b.upgrade) : null;
+  const siblings = Object.values(s.buildings).filter(x => x.def === b.def).map(x => x.iid);
+  const n = siblings.length > 1 ? ` ${siblings.indexOf(iid) + 1}` : '';
+  return `${u ? u.name : def.name}${n}`;
+}
 /** Recipes active for an instance (upgrade overrides base). */
 export function activeRecipes(b: BuildingInst): Recipe[] {
   const def = BUILDINGS[b.def];
@@ -105,13 +114,12 @@ export function activeDrain(b: BuildingInst): number {
   return u ? u.drain : def.drain;
 }
 export function dailyEnergyBalance(s: State): { drain: number; solar: number; net: number } {
-  let drain = C.BASE_DAILY_DRAIN, solar = 0;
-  for (const b of Object.values(s.buildings)) {
-    drain += activeDrain(b);
-    solar += BUILDINGS[b.def].passiveEnergy ?? 0;
-  }
+  let drain = C.BASE_DAILY_DRAIN;
+  for (const b of Object.values(s.buildings)) drain += activeDrain(b);
+  const solar = s.solar * C.SOLAR_ENERGY_PER_DAY;
   return { drain, solar, net: solar - drain };
 }
+export const solarCap = (s: State) => C.SOLAR_CAP[s.factorySize - 1] ?? 1;
 
 export const freeSlots = (s: State, wall: boolean) =>
   s.slots.map((e, i) => (e === null && slotIsWall(s, i) === wall ? i : -1)).filter(i => i >= 0);

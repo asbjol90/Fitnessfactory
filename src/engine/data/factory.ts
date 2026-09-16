@@ -40,15 +40,15 @@ export interface BuildingDef {
   gate: Gate;
   /** Mutually exclusive, permanent branch. */
   upgrades: BuildingUpgradeDef[];
-  /** Passive energy per day (Solar Panel). */
-  passiveEnergy?: number;
 }
 
 export type BuildingId =
-  | 'furnace' | 'crusher' | 'coke_oven'
-  | 'chemical_works' | 'refinery' | 'lapidary' | 'foundry' | 'machine_shop' | 'jeweler' | 'armory' | 'solar_panel';
+  | 'furnace' | 'crusher' | 'coke_oven' | 'munitions_press'
+  | 'chemical_works' | 'refinery' | 'lapidary' | 'foundry' | 'machine_shop' | 'jeweler' | 'armory';
 
 export type InfraId = 'reinforced_roof' | 'electrical_grid' | 'business_license';
+/** Solar panels live on the roof (no slot). Cost per panel. */
+export const SOLAR_PANEL = { name: 'Solar Panel', cost: cost({ iron: 10 }, 20, 0, 15), energyPerDay: 3 };
 export interface InfraDef { id: InfraId; name: string; cost: Cost; blurb: string; }
 export const INFRA: Record<InfraId, InfraDef> = {
   reinforced_roof: { id: 'reinforced_roof', name: 'Reinforced Roof', cost: cost({ iron: 15 }, 60), blurb: 'Required for the Solar Panel.' },
@@ -77,10 +77,11 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     recipes: [{ id: 'crush', name: 'Crush Stone', inputs: { stone: 1 }, output: { gravel: 1 }, labor: 2, energy: 1 }],
     gate: { kind: 'none' },
     upgrades: [
-      { id: 'hydraulic', name: 'Hydraulic Crusher', tagline: 'Half the Labor', cost: cost({ gravel: 8 }, 15), drain: 2,
-        recipes: [{ id: 'crush', name: 'Crush Stone', inputs: { stone: 1 }, output: { gravel: 1 }, labor: 1, energy: 1 }] },
+      // 1.0 CHANGE: Hydraulic is now Labor-free (was 1L), Sifting costs 2L (was 1L) — a real choice instead of a dominant one.
+      { id: 'hydraulic', name: 'Hydraulic Crusher', tagline: 'No Labor at all', cost: cost({ gravel: 8 }, 15), drain: 2,
+        recipes: [{ id: 'crush', name: 'Crush Stone', inputs: { stone: 1 }, output: { gravel: 1 }, labor: 0, energy: 2 }] },
       { id: 'sifting', name: 'Sifting Crusher', tagline: 'Finds ore in the rubble', cost: cost({ gravel: 8 }, 15), drain: 1,
-        recipes: [{ id: 'crush', name: 'Crush Stone', inputs: { stone: 1 }, output: { gravel: 1 }, labor: 1, energy: 1, bonus: { resource: 'iron_ore', chance: 0.15 } }] },
+        recipes: [{ id: 'crush', name: 'Crush Stone', inputs: { stone: 1 }, output: { gravel: 1 }, labor: 2, energy: 1, bonus: { resource: 'iron_ore', chance: 0.15 } }] },
     ],
   },
   coke_oven: {
@@ -95,15 +96,32 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
         recipes: [{ id: 'coke', name: 'Bake Coke', inputs: { coal: 1 }, output: { coke: 1 }, labor: 1, energy: 3, bonus: { resource: 'coal_tar', chance: 0.25 } }] },
     ],
   },
+  munitions_press: {
+    id: 'munitions_press', name: 'Munitions Press', floor: 'main',
+    cost: cost({ iron: 12, stone: 10 }, 0, 15), drain: 2,
+    recipes: [
+      { id: 'cartridges', name: 'Press Cartridges', inputs: { iron: 2, coke: 1 }, output: { cartridges: 4 }, labor: 2, energy: 2 },
+      { id: 'hardened', name: 'Harden Rounds', inputs: { cartridges: 2, precision_components: 1 }, output: { hardened_rounds: 4 }, labor: 3, energy: 3 },
+    ],
+    gate: { kind: 'none' },
+    upgrades: [
+      { id: 'heavy', name: 'Heavy Press', tagline: 'Alloy Rounds for the Double Minigun', cost: cost({ precision_components: 2, iron: 20 }, 60), drain: 3,
+        recipes: [
+          { id: 'cartridges', name: 'Press Cartridges', inputs: { iron: 2, coke: 1 }, output: { cartridges: 4 }, labor: 2, energy: 2 },
+          { id: 'hardened', name: 'Harden Rounds', inputs: { cartridges: 2, precision_components: 1 }, output: { hardened_rounds: 4 }, labor: 3, energy: 3 },
+          { id: 'alloy', name: 'Alloy Rounds', inputs: { hardened_rounds: 4, reinforced_alloy: 1 }, output: { alloy_rounds: 6 }, labor: 4, energy: 5 },
+        ] },
+    ],
+  },
   chemical_works: {
     id: 'chemical_works', name: 'Chemical Works', floor: 'workshop',
-    cost: cost({ coal_tar: 15, iron: 10 }, 35), drain: 2,
+    cost: cost({ coal_tar: 15, iron: 10, precision_components: 1 }, 44), drain: 2,
     recipes: [{ id: 'catalyst', name: 'Refine Catalyst', inputs: { coal_tar: 3 }, output: { refined_catalyst: 1 }, labor: 4, energy: 5 }],
     gate: { kind: 'upgrade', building: 'coke_oven', upgrade: 'byproduct' }, upgrades: [],
   },
   refinery: {
     id: 'refinery', name: 'Refinery', floor: 'workshop',
-    cost: cost({ iron: 15, gravel: 10 }, 40), drain: 3,
+    cost: cost({ iron: 15, gravel: 10, precision_components: 1 }, 50), drain: 3,
     recipes: [
       { id: 'silver', name: 'Refine Silver', inputs: { silver: 1 }, output: { refined_silver: 1 }, labor: 4, energy: 3 },
       { id: 'bullion', name: 'Cast Bullion', inputs: { gold_ore: 1 }, output: { gold_bullion: 1 }, labor: 5, energy: 4 },
@@ -112,41 +130,40 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
   },
   lapidary: {
     id: 'lapidary', name: 'Lapidary', floor: 'workshop',
-    cost: cost({ iron: 20, coke: 15, hardened_steel: 5 }, 60), drain: 2,
+    cost: cost({ iron: 20, coke: 15, hardened_steel: 5, precision_components: 2 }, 75), drain: 2,
     recipes: [{ id: 'cut', name: 'Cut Diamond', inputs: { diamond: 1 }, output: { cut_diamond: 1 }, labor: 8, energy: 6 }],
     gate: GRID_LICENSE, upgrades: [],
   },
   foundry: {
     id: 'foundry', name: 'Foundry', floor: 'workshop',
-    cost: cost({ iron: 25, coke: 15 }, 30), drain: 3,
-    recipes: [{ id: 'alloy', name: 'Cast Alloy', inputs: { iron: 3, coke: 2, hardened_steel: 1 }, output: { reinforced_alloy: 1 }, labor: 10, energy: 8 }],
+    cost: cost({ iron: 25, coke: 15, precision_components: 2 }, 38), drain: 3,
+    recipes: [
+      { id: 'alloy', name: 'Cast Alloy', inputs: { iron: 3, coke: 2, hardened_steel: 1 }, output: { reinforced_alloy: 1 }, labor: 10, energy: 8 },
+      // 1.0 CHANGE: Hardened Steel can be made, so alloy is not capped by rare loot.
+      { id: 'temper', name: 'Temper Steel', inputs: { iron: 5, coke: 3 }, output: { hardened_steel: 1 }, labor: 8, energy: 8 },
+    ],
     gate: GRID_LICENSE, upgrades: [],
   },
   machine_shop: {
     id: 'machine_shop', name: 'Machine Shop', floor: 'workshop',
-    cost: cost({ iron: 15, coke: 10 }, 25), drain: 3,
+    cost: cost({ iron: 15, coke: 10 }, 31), drain: 3,
     recipes: [{ id: 'components', name: 'Mill Components', inputs: { iron: 2, coke: 1, gravel: 2 }, output: { precision_components: 1 }, labor: 6, energy: 4 }],
     gate: GRID_LICENSE, upgrades: [],
   },
   jeweler: {
     id: 'jeweler', name: 'Jeweler', floor: 'workshop',
-    cost: cost({ gold_bullion: 5, refined_silver: 5 }, 60), drain: 3,
+    cost: cost({ gold_bullion: 5, refined_silver: 5, precision_components: 2 }, 75), drain: 3,
     recipes: [{ id: 'jewelry', name: 'Set Jewelry', inputs: { cut_diamond: 1, gold_bullion: 2, refined_silver: 2 }, output: { master_jewelry: 1 }, labor: 12, energy: 8 }],
     gate: GRID_LICENSE, upgrades: [],
   },
   armory: {
     id: 'armory', name: 'Armory', floor: 'workshop',
-    cost: cost({ reinforced_alloy: 2, iron: 10 }, 90), drain: 4,
+    cost: cost({ reinforced_alloy: 2, iron: 10, precision_components: 3 }, 112), drain: 4,
     recipes: [
       { id: 'gear_diamond', name: 'Forge Gear (diamond)', inputs: { reinforced_alloy: 2, cut_diamond: 1 }, output: { masterwork_gear: 1 }, labor: 15, energy: 12 },
       { id: 'gear_catalyst', name: 'Forge Gear (catalyst)', inputs: { reinforced_alloy: 2, refined_catalyst: 1 }, output: { masterwork_gear: 1 }, labor: 14, energy: 10 },
     ],
     gate: GRID_LICENSE, upgrades: [],
-  },
-  solar_panel: {
-    id: 'solar_panel', name: 'Solar Panel', floor: 'workshop',
-    cost: cost({ iron: 10 }, 20, 0, 15), drain: 0, recipes: [],
-    gate: { kind: 'infra', infra: ['reinforced_roof'] }, upgrades: [], passiveEnergy: 3,
   },
 };
 
@@ -163,9 +180,9 @@ export interface TurretDef {
 export const TURRETS: Record<TurretId, TurretDef> = {
   scrap_launcher: { id: 'scrap_launcher', name: 'Scrap Launcher', tier: 1, shots: 2, damage: 4, ammo: 'iron_ore', cost: cost({ iron_ore: 20 }, 0, 15) },
   shotgun: { id: 'shotgun', name: 'Shotgun', tier: 2, shots: 2, damage: 8, ammo: 'iron', cost: cost({ iron: 15 }, 20) },
-  assault_rifle: { id: 'assault_rifle', name: 'Assault Rifle', tier: 3, shots: 8, damage: 5, ammo: 'coke', cost: cost({ coke: 15, iron: 10 }, 35) },
-  minigun: { id: 'minigun', name: 'Minigun', tier: 4, shots: 10, damage: 8, ammo: 'precision_components', cost: cost({ precision_components: 5 }, 60) },
-  double_minigun: { id: 'double_minigun', name: 'Double Minigun', tier: 5, shots: 10, damage: 15, ammo: 'reinforced_alloy', cost: cost({ reinforced_alloy: 3 }, 100) },
+  assault_rifle: { id: 'assault_rifle', name: 'Assault Rifle', tier: 3, shots: 8, damage: 5, ammo: 'cartridges', cost: cost({ coke: 15, iron: 10 }, 35) },
+  minigun: { id: 'minigun', name: 'Minigun', tier: 4, shots: 10, damage: 8, ammo: 'hardened_rounds', cost: cost({ precision_components: 5 }, 80) },   // 1.0 CHANGE: gold was 60
+  double_minigun: { id: 'double_minigun', name: 'Double Minigun', tier: 5, shots: 10, damage: 15, ammo: 'alloy_rounds', cost: cost({ reinforced_alloy: 3 }, 130) },   // 1.0 CHANGE: gold was 100
 };
 export const TURRET_IDS = Object.keys(TURRETS) as TurretId[];
 

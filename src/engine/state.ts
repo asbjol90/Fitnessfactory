@@ -3,7 +3,7 @@ import { HABIT_IDS, RESOURCE_IDS, STAT_IDS } from './data/core';
 import { C } from './constants';
 import type { BuildingId, InfraId, TurretId } from './data/factory';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const SAVE_KEY = 'fitnessfactory_state_v2';
 export const V1_SAVE_KEY = 'fitnessfactory_state_v1';
 
@@ -83,6 +83,8 @@ export interface State {
 
   techs: TechId[];
   infra: InfraId[];
+  /** Roof-mounted solar panels (no slot). */
+  solar: number;
   factorySize: number;
 
   slots: Array<SlotEntry | null>;
@@ -128,7 +130,7 @@ export function initialState(now: number): State {
     },
     res: emptyBag(),
     gold: 0, labor: 0, energy: C.START_ENERGY, research: 0,
-    techs: [], infra: [], factorySize: 1,
+    techs: [], infra: [], solar: 0, factorySize: 1,
     slots: Array.from({ length: 6 }, () => null),
     buildings: {}, turrets: {}, conveyors: [], nextId: 1,
     lootRunsCompleted: 0, runsSinceSteel: 0, maxZoneTierReached: 0, raidHistory: [],

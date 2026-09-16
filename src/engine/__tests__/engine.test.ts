@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   BUILDINGS, C, RAID_WAVES, TURRETS, TURRET_IDS, contractProgress, dailyEnergyBalance, effectiveLevel,
-  initialState, naturalLevel, reduce, seededRng, turretOutput, type Action, type State, type Rng,
+  initialState, naturalLevel, reduce, seededRng, turretOutput, upgradeSave, type Action, type State, type Rng,
 } from '../index';
 
 const T0 = new Date('2026-09-15T10:00:00').getTime();
@@ -68,7 +68,7 @@ describe('raids', () => {
     s = run(s, rng, [{ type: 'build_turret', turret: 'scrap_launcher' }]);
     const iid = Object.keys(s.turrets)[0]!;
     s = run(s, rng, [{ type: 'load_ammo', iid }]);
-    expect(s.turrets[iid]!.ammo).toBe(20);
+    expect(s.turrets[iid]!.ammo).toBe(C.AMMO_LOAD_AMOUNT);
     s = { ...s, lootRunsCompleted: 6, maxZoneTierReached: 1 };
     let raided = false;
     for (let i = 0; i < 80 && !raided; i++) {
@@ -79,7 +79,7 @@ describe('raids', () => {
         raided = true;
         expect(ev.record.repelled).toBe(true);
         expect(ev.record.shots[0]!.shots).toBe(1); // 4 dmg vs 4 hp → one shot
-        expect(s.turrets[iid]!.ammo).toBe(18);
+        expect(s.turrets[iid]!.ammo).toBe(C.AMMO_LOAD_AMOUNT - C.AMMO_PER_SHOT);
       }
     }
     expect(raided).toBe(true);
@@ -203,7 +203,7 @@ describe('factory', () => {
   });
   it('workshop gate and infra gate hold', () => {
     let { s, rng } = fresh();
-    s = give(s, { gold: 9999, labor: 999 }, { iron: 999, gravel: 999, coke: 999, stone: 999, iron_ore: 999, coal: 999 });
+    s = give(s, { gold: 9999, labor: 999 }, { iron: 999, gravel: 999, coke: 999, stone: 999, iron_ore: 999, coal: 999, precision_components: 9 });
     const locked = reduce(s, { type: 'build', building: 'refinery' }, { now: T0, rng });
     expect(locked.error).toMatch(/Workshop/);
     s = run(s, rng, [{ type: 'build', building: 'furnace' }, { type: 'build', building: 'crusher' }]);
@@ -289,6 +289,64 @@ describe('contracts', () => {
     const { s } = fresh(2);
     const ids = s.contracts.slots.map(c => c.id);
     expect(ids.some(id => id.startsWith('prod_'))).toBe(false);
+  });
+});
+
+describe('round 1 mechanics', () => {
+  it('buildings can be duplicated and get numbered labels', () => {
+    let { s, rng } = fresh();
+    s = give(s, { labor: 100 }, { stone: 60, iron_ore: 40 });
+    s = run(s, rng, [{ type: 'build', building: 'furnace' }, { type: 'build', building: 'furnace' }]);
+    expect(Object.values(s.buildings).filter(b => b.def === 'furnace')).toHaveLength(2);
+  });
+  it('solar panels sit on the roof, capped by factory size, and count in the daily balance', () => {
+    let { s, rng } = fresh();
+    s = give(s, { gold: 999, research: 99, labor: 99 }, { iron: 99 });
+    const noRoof = reduce(s, { type: 'build_solar' }, { now: T0, rng });
+    expect(noRoof.error).toMatch(/Roof/);
+    s = run(s, rng, [{ type: 'build_infra', infra: 'reinforced_roof' }, { type: 'build_solar' }]);
+    expect(s.slots.every(e => e === null)).toBe(true);
+    expect(dailyEnergyBalance(s).solar).toBe(C.SOLAR_ENERGY_PER_DAY);
+    const second = reduce(s, { type: 'build_solar' }, { now: T0, rng });
+    expect(second.error).toMatch(/holds 1/);
+  });
+  it('ammo chain: cartridges from the press feed the assault rifle', () => {
+    let { s, rng } = fresh();
+    s = give(s, { labor: 200, energy: 200, gold: 200, research: 50 }, { iron: 60, stone: 40, coke: 40 });
+    s = run(s, rng, [{ type: 'build', building: 'munitions_press' }, { type: 'build_turret', turret: 'assault_rifle' }]);
+    const press = Object.values(s.buildings).find(b => b.def === 'munitions_press')!;
+    s = run(s, rng, [{ type: 'produce', iid: press.iid, recipe: 'cartridges', units: 3 }]);
+    expect(s.res.cartridges).toBe(12);
+    const t = Object.values(s.turrets)[0]!;
+    s = run(s, rng, [{ type: 'load_ammo', iid: t.iid }]);
+    expect(s.turrets[t.iid]!.ammo).toBe(10);
+    expect(s.res.cartridges).toBe(2);
+    s = run(s, rng, [{ type: 'research', tech: 'conveyor_systems' }]);
+    const wrong = reduce(s, { type: 'add_conveyor', from: { kind: 'stock' }, to: { kind: 'turret', iid: t.iid }, resource: 'coke' }, { now: T0, rng: () => 0 });
+    expect(wrong.error).toMatch(/fires Cartridges/);
+  });
+  it('hydraulic crusher is labor-free, sifting costs 2', () => {
+    const h = BUILDINGS.crusher.upgrades.find(u => u.id === 'hydraulic')!.recipes[0]!;
+    const sft = BUILDINGS.crusher.upgrades.find(u => u.id === 'sifting')!.recipes[0]!;
+    expect(h.labor).toBe(0); expect(sft.labor).toBe(2); expect(sft.bonus).toBeTruthy();
+  });
+  it('upgrades a v2 save: solar slot → roof, stale ammo belts dropped, new resources zeroed', () => {
+    const { s } = fresh();
+    const v2 = JSON.parse(JSON.stringify(s)) as Record<string, unknown>;
+    v2['version'] = 2; delete v2['solar'];
+    const res = v2['res'] as Record<string, number>; delete res['cartridges'];
+    (v2['buildings'] as Record<string, unknown>)['b9'] = { iid: 'b9', def: 'solar_panel', upgrade: null };
+    (v2['slots'] as unknown[])[0] = { kind: 'building', iid: 'b9' };
+    (v2['turrets'] as Record<string, unknown>)['t9'] = { iid: 't9', def: 'assault_rifle', ammo: 6 };
+    (v2['conveyors'] as unknown[]).push({ id: 'c9', resource: 'coke', amount: 5, from: { kind: 'stock' }, to: { kind: 'turret', iid: 't9' } });
+    const up = upgradeSave(v2)!;
+    expect(up.version).toBe(3);
+    expect(up.solar).toBe(1);
+    expect(up.slots[0]).toBeNull();
+    expect(up.buildings['b9']).toBeUndefined();
+    expect(up.conveyors).toHaveLength(0);
+    expect(up.turrets['t9']!.ammo).toBe(6);
+    expect(up.res.cartridges).toBe(0);
   });
 });
 

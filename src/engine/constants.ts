@@ -56,10 +56,12 @@ export const C = {
   EMERGENCY_ENERGY_AMOUNT: 20,
   DEFAULT_CONVEYOR_AMOUNT: 5,
   SOLAR_ENERGY_PER_DAY: 3,
+  /** Solar panels sit on the roof, not in a slot. Max per factory size level (index = level-1). */
+  SOLAR_CAP: [1, 2, 3, 4] as const,
 
   // --- Turrets / raids ----------------------------------------------------
   AMMO_PER_SHOT: 2,
-  AMMO_LOAD_AMOUNT: 20,
+  AMMO_LOAD_AMOUNT: 10,   // 1.0 CHANGE: was 20
   AMMO_CAP: 200,
   RAID_APPROACH_TICKS: 10,
   RAID_GRACE_RUNS: 5,

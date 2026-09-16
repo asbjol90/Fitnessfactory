@@ -10,4 +10,4 @@ export { contractProgress } from './contracts';
 export { staleConveyors } from './conveyors';
 export { freshRaid } from './raids';
 export { GameError } from './errors';
-export { migrateV1, loadState } from './migrate';
+export { migrateV1, loadState, upgradeSave } from './migrate';

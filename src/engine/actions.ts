@@ -20,6 +20,7 @@ export type Action =
   | { type: 'remove_conveyor'; id: string }
   | { type: 'research'; tech: TechId }
   | { type: 'build_infra'; infra: InfraId }
+  | { type: 'build_solar' }
   | { type: 'upgrade_factory' }
   | { type: 'claim_contract'; id: string }
   | { type: 'craft_gear'; stat: StatId }
@@ -47,6 +48,7 @@ export type GameEvent =
   | { type: 'conveyor'; op: 'added' | 'removed' | 'changed'; id: string }
   | { type: 'tech'; tech: TechId }
   | { type: 'infra'; infra: InfraId }
+  | { type: 'solar'; count: number }
   | { type: 'factory_size'; level: number }
   | { type: 'contract_done'; id: string; reward: number }
   | { type: 'gear'; stat: StatId; tier: number }

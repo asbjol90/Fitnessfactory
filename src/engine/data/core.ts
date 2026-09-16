@@ -6,10 +6,11 @@ export const RESOURCE_IDS = [
   'iron', 'gravel', 'coke', 'coal_tar', 'refined_silver', 'gold_bullion',
   'precision_components', 'cut_diamond', 'refined_catalyst', 'reinforced_alloy',
   'master_jewelry', 'masterwork_gear',
+  'cartridges', 'hardened_rounds', 'alloy_rounds',
 ] as const;
 export type ResourceId = typeof RESOURCE_IDS[number];
 
-export type ResourceTier = 'raw' | 'premium' | 'rare' | 'refined';
+export type ResourceTier = 'raw' | 'premium' | 'rare' | 'refined' | 'ammo';
 
 export interface ResourceDef {
   id: ResourceId;
@@ -42,6 +43,9 @@ export const RESOURCES: Record<ResourceId, ResourceDef> = {
   reinforced_alloy: r('reinforced_alloy', 'Reinforced Alloy', 'refined', 60),
   master_jewelry: r('master_jewelry', 'Master Jewelry', 'refined', 160),
   masterwork_gear: r('masterwork_gear', 'Masterwork Gear', 'refined', 220),
+  cartridges: r('cartridges', 'Cartridges', 'ammo', 3),
+  hardened_rounds: r('hardened_rounds', 'Hardened Rounds', 'ammo', 9),
+  alloy_rounds: r('alloy_rounds', 'Alloy Rounds', 'ammo', 14),
 };
 
 export const RAW_IDS: ResourceId[] = ['iron_ore', 'coal', 'stone'];
@@ -93,10 +97,11 @@ export const STAT_THRESHOLDS: Record<StatId, readonly number[]> = {
 
 export interface GearDef { stat: StatId; name: string; material: ResourceId; tierCosts: readonly number[]; }
 export const GEAR: Record<StatId, GearDef> = {
-  speed: { stat: 'speed', name: 'Field Armor', material: 'reinforced_alloy', tierCosts: [2, 5, 9, 14] },
-  strength: { stat: 'strength', name: 'Work Tools', material: 'precision_components', tierCosts: [2, 5, 9, 14] },
-  energy: { stat: 'energy', name: 'Power Cells', material: 'refined_catalyst', tierCosts: [2, 5, 9, 14] },
-  research: { stat: 'research', name: "Scholar's Kit", material: 'master_jewelry', tierCosts: [1, 3, 6, 10] },
+  // 1.0 CHANGE: last two tiers cost more (was 9/14 and 6/10).
+  speed: { stat: 'speed', name: 'Field Armor', material: 'reinforced_alloy', tierCosts: [2, 5, 10, 16] },
+  strength: { stat: 'strength', name: 'Work Tools', material: 'precision_components', tierCosts: [2, 5, 10, 16] },
+  energy: { stat: 'energy', name: 'Power Cells', material: 'refined_catalyst', tierCosts: [2, 5, 10, 16] },
+  research: { stat: 'research', name: "Scholar's Kit", material: 'master_jewelry', tierCosts: [1, 3, 7, 12] },
 };
 
 export const AVATAR_IDS = [
@@ -127,6 +132,6 @@ export interface FactorySizeDef { level: number; interior: number; wall: number;
 export const FACTORY_SIZES: FactorySizeDef[] = [
   { level: 1, interior: 4, wall: 2, cost: {}, gold: 0 },
   { level: 2, interior: 7, wall: 3, cost: { iron: 30, gravel: 20 }, gold: 150 },
-  { level: 3, interior: 10, wall: 4, cost: { iron: 60, coke: 30 }, gold: 350 },
-  { level: 4, interior: 12, wall: 5, cost: { iron: 100, coke: 60, gold_bullion: 5 }, gold: 600 },
+  { level: 3, interior: 10, wall: 4, cost: { iron: 60, coke: 30 }, gold: 490 },   // 1.0 CHANGE: was 350
+  { level: 4, interior: 12, wall: 5, cost: { iron: 100, coke: 60, gold_bullion: 5 }, gold: 840 },   // 1.0 CHANGE: was 600
 ];

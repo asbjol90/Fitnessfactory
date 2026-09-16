@@ -125,15 +125,28 @@ ${ground}
 <path d="M24 34 L68 34 M40 22 L28 46 M56 22 L44 46" stroke="${P.steelDk}" stroke-width="1.5"/>
 <rect x="38" y="46" width="6" height="10" fill="${P.steel}"/>`;
 
+const press = () => `
+${ground}
+<rect x="18" y="44" width="60" height="10" rx="2" fill="${P.steelDk}"/>
+<rect x="26" y="10" width="44" height="10" rx="2" fill="${P.steelDk}"/>
+<rect x="30" y="20" width="6" height="26" fill="${P.steel}"/><rect x="60" y="20" width="6" height="26" fill="${P.steel}"/>
+<g class="anim-piston"><rect x="40" y="18" width="16" height="16" rx="2" fill="${P.hazard}"/><rect x="38" y="32" width="20" height="6" fill="${P.steelLt}"/></g>
+<rect x="36" y="40" width="24" height="5" fill="${P.copper}"/>
+<rect x="72" y="36" width="10" height="8" fill="${P.copper}"/><rect x="74" y="30" width="6" height="6" fill="${P.copper}"/>`;
+const heavyPress = () => press().replace(`fill="${P.hazard}"/><rect x="38" y="32"`, `fill="${P.ember}"/><rect x="38" y="32"`) + `<rect x="20" y="4" width="56" height="6" fill="${P.hazard}"/>`;
+
 const BUILDING_ART: Record<BuildingId, () => string> = {
-  furnace, crusher, coke_oven: cokeOven, chemical_works: chemical, refinery, lapidary, foundry,
-  machine_shop: machineShop, jeweler, armory, solar_panel: solar,
+  furnace, crusher, coke_oven: cokeOven, munitions_press: press, chemical_works: chemical, refinery, lapidary, foundry,
+  machine_shop: machineShop, jeweler, armory,
 };
+/** Roof solar panel, drawn small. */
+export const solarArt = solar;
 const UPGRADE_ART: Record<string, () => string> = {
   'furnace:blast': blast, 'furnace:forge': forge,
   'crusher:hydraulic': () => crusher().replace(P.hazard, P.glass),
   'crusher:sifting': () => crusher() + `<rect x="24" y="34" width="48" height="3" fill="${P.hazard}" opacity=".8"/>`,
   'coke_oven:industrial': () => cokeOven().replace(`<rect x="44" y="6" width="8" height="12"`, `<rect x="40" y="0" width="16" height="18"`),
+  'munitions_press:heavy': heavyPress,
   'coke_oven:byproduct': () => cokeOven() + `<rect x="74" y="40" width="12" height="14" rx="2" fill="${P.steelDk}"/><circle cx="80" cy="47" r="3" fill="${P.ink}"/>`,
 };
 export const buildingArt = (id: BuildingId, upgrade: string | null) =>
@@ -174,7 +187,7 @@ export const raidArt = (mode: 'quiet' | 'repelled' | 'breach') => {
 };
 
 // ---------------------------------------------------------------- Resource icons (16×16)
-type IconId = 'ore' | 'coal' | 'stone' | 'gem' | 'ingot' | 'gravel' | 'coke' | 'tar' | 'gear' | 'alloy' | 'ring' | 'crown' | 'steel' | 'flask';
+type IconId = 'ore' | 'coal' | 'stone' | 'gem' | 'ingot' | 'gravel' | 'coke' | 'tar' | 'gear' | 'alloy' | 'ring' | 'crown' | 'steel' | 'flask' | 'round';
 const ICON: Record<IconId, (c: string) => string> = {
   ore: c => `<path d="M3 12 L6 5 L11 4 L14 9 L12 13 L5 14Z" fill="${c}"/><path d="M6 5 L9 8 L12 13" stroke="#000" stroke-opacity=".25" stroke-width="1.2" fill="none"/>`,
   coal: c => `<path d="M2 10 L5 4 L11 3 L14 8 L11 13 L4 13Z" fill="${c}"/>`,
@@ -190,6 +203,7 @@ const ICON: Record<IconId, (c: string) => string> = {
   crown: c => `<path d="M2 12 L3 5 L6 8 L8 3 L10 8 L13 5 L14 12Z" fill="${c}"/><rect x="2" y="12" width="12" height="2" fill="${c}"/>`,
   steel: c => `<path d="M3 4 L13 4 L11 12 L5 12Z" fill="${c}"/><path d="M5 6h6" stroke="#fff" stroke-opacity=".4"/>`,
   flask: c => `<path d="M6 2h4v4l3 6a1 1 0 0 1-1 2H4a1 1 0 0 1-1-2l3-6Z" fill="${c}"/>`,
+  round: c => `<path d="M5 6 C5 3 11 3 11 6 L11 14 L5 14Z" fill="${c}"/><rect x="5" y="10" width="6" height="2" fill="#000" fill-opacity=".3"/>`,
 };
 export const RESOURCE_ICON: Record<string, [IconId, string]> = {
   iron_ore: ['ore', '#B8703F'], coal: ['coal', '#3A3F47'], stone: ['stone', '#8E97A3'],
@@ -199,6 +213,7 @@ export const RESOURCE_ICON: Record<string, [IconId, string]> = {
   gold_bullion: ['ingot', '#F2C94C'], precision_components: ['gear', '#B8C4D2'], cut_diamond: ['gem', '#A8F0FF'],
   refined_catalyst: ['flask', '#9CD64A'], reinforced_alloy: ['alloy', '#6FA3D6'], master_jewelry: ['ring', '#F2C94C'],
   masterwork_gear: ['crown', '#FFD86B'],
+  cartridges: ['round', '#C9A43B'], hardened_rounds: ['round', '#8FA3B8'], alloy_rounds: ['round', '#6FA3D6'],
   research: ['flask', '#B48CF2'], gold: ['ingot', '#F2C94C'],
 };
 export function iconSvg(res: string, size = 16): string {

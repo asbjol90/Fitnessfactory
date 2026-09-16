@@ -75,7 +75,9 @@ export function migrateV1(raw: unknown, now: number): State {
   });
   // Buildings marked built but not in a slot (or overflowed) get the first free slot.
   for (const [id, b] of Object.entries(v.buildings ?? {})) {
-    if (!b?.built || placed.has(id) || !(id in BUILDINGS)) continue;
+    if (!b?.built || placed.has(id)) continue;
+    if (id === 'solar_panel') { s.solar++; continue; }
+    if (!(id in BUILDINGS)) continue;
     const free = s.slots.findIndex(e => e === null);
     if (free < 0) break;
     s.slots[free] = makeEntry(s, id, 0)!;
@@ -131,6 +133,7 @@ function makeEntry(s: State, val: string, ammo: number): SlotEntry | null {
     s.turrets[iid] = { iid, def, ammo: clamp(ammo, 0, 200) };
     return { kind: 'turret', iid };
   }
+  if (val === 'solar_panel') { s.solar++; return null; }
   if (!(val in BUILDINGS)) return null;
   if (Object.values(s.buildings).some(b => b.def === val)) return null;
   const iid = `b${s.nextId++}`;
@@ -160,13 +163,40 @@ function sizeOf(level: number): { interior: number; wall: number } {
 const num = (x: unknown, d = 0) => (typeof x === 'number' && Number.isFinite(x) ? x : d);
 const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x));
 
-/** Load from localStorage: v2 first, else migrate v1, else fresh. */
+/**
+ * Bring a v2+ save up to the current version. Additive: new resources get 0,
+ * new fields get defaults, and content that no longer exists is converted.
+ */
+export function upgradeSave(raw: unknown): State | null {
+  const s = raw as State & { version: number };
+  if (!s || typeof s !== 'object' || typeof s.version !== 'number' || s.version < 2 || s.version > SAVE_VERSION) return null;
+  for (const id of RESOURCE_IDS) if (typeof s.res[id] !== 'number') s.res[id] = 0;
+  if (s.version < 3) {
+    // Solar panels moved from slots to the roof; old ammo types changed.
+    s.solar = 0;
+    for (const [iid, b] of Object.entries(s.buildings)) {
+      if ((b.def as string) === 'solar_panel') {
+        s.solar++;
+        delete s.buildings[iid];
+        const idx = s.slots.findIndex(e => e && e.kind === 'building' && e.iid === iid);
+        if (idx >= 0) s.slots[idx] = null;
+        s.conveyors = s.conveyors.filter(c => !(c.to.kind === 'building' && c.to.iid === iid) && !(c.from.kind === 'building' && c.from.iid === iid));
+      }
+    }
+    // Belts feeding turrets whose ammo type changed are now wrong; drop them (ammo already loaded stays).
+    s.conveyors = s.conveyors.filter(c => !(c.to.kind === 'turret' && s.turrets[c.to.iid] && TURRETS[s.turrets[c.to.iid]!.def].ammo !== c.resource));
+  }
+  s.version = SAVE_VERSION;
+  return s;
+}
+
+/** Load from localStorage: current save first (upgrading if older), else migrate v1, else fresh. */
 export function loadState(storage: Pick<Storage, 'getItem' | 'setItem'>, now: number): { state: State; migrated: boolean } {
   const v2 = storage.getItem(SAVE_KEY);
   if (v2) {
     try {
-      const parsed = JSON.parse(v2) as State;
-      if (parsed.version === SAVE_VERSION) return { state: parsed, migrated: false };
+      const up = upgradeSave(JSON.parse(v2));
+      if (up) return { state: up, migrated: false };
     } catch { /* fall through */ }
   }
   const v1 = storage.getItem(V1_SAVE_KEY);

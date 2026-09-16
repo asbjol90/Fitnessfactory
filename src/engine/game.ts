@@ -7,10 +7,10 @@ import {
   AVATAR_IDS, FACTORY_SIZES, GEAR, GEAR_DROP_ZONES, HABITS, PREMIUM_WEIGHTS, RESOURCES, STAT_IDS, TECHS,
   zoneById, type Bag, type HabitId, type ResourceId, type StatId,
 } from './data/core';
-import { BUILDINGS, INFRA, TURRETS, type Cost } from './data/factory';
+import { BUILDINGS, INFRA, SOLAR_PANEL, TURRETS, type Cost } from './data/factory';
 import {
   buildingBlocker, effectiveLevel, energyBonus, freeSlots, gearUpgradeCost, laborBonus, lootBonus, naturalLevel,
-  nextFactorySize, sellBonus, sellLaborCost, slotIsWall, statMult, techAvailable,
+  nextFactorySize, sellBonus, sellLaborCost, slotIsWall, solarCap, statMult, techAvailable,
 } from './derive';
 import { GameError } from './errors';
 import { runRecipe } from './production';
@@ -77,6 +77,7 @@ function apply(s: State, a: Action, ctx: Ctx, ev: GameEvent[]): void {
     }
     case 'research': return research(s, a.tech, ctx, ev);
     case 'build_infra': return buildInfra(s, a.infra, ev);
+    case 'build_solar': return buildSolar(s, ev);
     case 'upgrade_factory': return upgradeFactory(s, ev);
     case 'claim_contract': return claimContract(s, a.id, ev);
     case 'craft_gear': return craftGear(s, a.stat, ev);
@@ -456,6 +457,14 @@ function buildInfra(s: State, id: keyof typeof INFRA, ev: GameEvent[]): void {
   payCost(s, INFRA[id].cost);
   s.infra.push(id);
   ev.push({ type: 'infra', infra: id });
+}
+
+function buildSolar(s: State, ev: GameEvent[]): void {
+  if (!s.infra.includes('reinforced_roof')) throw new GameError('Needs the Reinforced Roof first.');
+  if (s.solar >= solarCap(s)) throw new GameError(`The roof holds ${solarCap(s)} panel${solarCap(s) > 1 ? 's' : ''} at this factory size.`);
+  payCost(s, SOLAR_PANEL.cost);
+  s.solar++;
+  ev.push({ type: 'solar', count: s.solar });
 }
 
 function upgradeFactory(s: State, ev: GameEvent[]): void {

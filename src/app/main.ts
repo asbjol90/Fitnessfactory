@@ -7,7 +7,7 @@ import { renderTrain } from './screens/train';
 import { renderFactory } from './screens/factory';
 import { renderAvatar } from './screens/avatar';
 import { renderTrade } from './screens/trade';
-import { renderLab } from './screens/lab';
+import { renderLab, settingsSheet } from './screens/lab';
 
 type TabId = 'train' | 'factory' | 'avatar' | 'trade' | 'lab';
 const TABS: Array<{ id: TabId; label: string; path: string; render: (s: State) => Node }> = [
@@ -47,7 +47,8 @@ function renderTop(s: State) {
     const el = h(`div.pool.${p.cls}`, { title: p.key }, icon(p.key === 'labor' ? 'iron' : p.key === 'energy' ? 'refined_catalyst' : p.key, 18), h('span', fmt(s[p.key])));
     poolEls.set(p.key, el);
     return el;
-  }));
+  }), h('button.gear-btn', { title: 'Settings', onclick: () => settingsSheet() },
+    svg('<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>')));
 }
 function flashPool(key: string, delta: number) {
   const el = poolEls.get(key);

@@ -1,17 +1,21 @@
 import { h, svg } from '../dom';
 import { store } from '../store';
 import { act, armed, bagChips, costChips, icon, liveSheet, sheet, stepper, toast } from '../ui';
-import { buildingArt, iconInner, raidArt, stockArt, traderArt, turretArt } from '../../art/nodes';
+import { buildingArt, iconInner, raidArt, solarArt, stockArt, traderArt, turretArt } from '../../art/nodes';
+import { go } from '../main';
 import { playRaid } from '../raidplay';
 import {
-  BUILDINGS, BUILDING_IDS, C, FACTORY_SIZES, INFRA, RESOURCES, TURRETS, TURRET_IDS, ZONES,
-  activeDrain, activeRecipes, buildingBlocker, dailyEnergyBalance, factorySize, freshRaid, hasTech, nextFactorySize,
-  slotIsWall, staleConveyors, timesAffordable, workshopUnlocked,
+  BUILDINGS, BUILDING_IDS, C, INFRA, RESOURCES, SOLAR_PANEL, TURRETS, TURRET_IDS, ZONES,
+  activeDrain, activeRecipes, buildingBlocker, buildingLabel, dailyEnergyBalance, factorySize, freshRaid, hasTech, nextFactorySize,
+  slotIsWall, solarCap, staleConveyors, timesAffordable, workshopUnlocked,
   type BuildingInst, type Conveyor, type NodeRef, type RaidRecord, type ResourceId, type State, type TurretInst,
 } from '../../engine';
 
 type Mode = 'view' | 'arrange' | 'connect';
-const ui: { mode: Mode; sel: number | null; selNode: NodeRef | null; playedRaidAt: number } = { mode: 'view', sel: null, selNode: null, playedRaidAt: 0 };
+const SEEN_KEY = 'fitnessfactory_seen_raid';
+const ui: { mode: Mode; sel: number | null; selNode: NodeRef | null; playedRaidAt: number; seenRaidAt: number } =
+  { mode: 'view', sel: null, selNode: null, playedRaidAt: 0, seenRaidAt: Number(localStorage.getItem(SEEN_KEY) ?? 0) };
+const markSeen = (at: number) => { ui.seenRaidAt = at; try { localStorage.setItem(SEEN_KEY, String(at)); } catch { /* ignore */ } };
 
 // Geometry (SVG units)
 const BW = 96, BH = 64, GX = 12, GY = 36, COLS = 4, PAD = 18;
@@ -69,12 +73,10 @@ export function renderFactory(s: State): Node {
     let art = '', label = '', sub = '';
     if (entry.kind === 'building') {
       const b = s.buildings[entry.iid]!;
-      const def = BUILDINGS[b.def];
-      const u = b.upgrade ? def.upgrades.find(u => u.id === b.upgrade) : null;
       art = buildingArt(b.def, b.upgrade);
-      label = u ? u.name : def.name;
+      label = buildingLabel(s, entry.iid);
       const drain = activeDrain(b);
-      sub = def.passiveEnergy ? `+${def.passiveEnergy}⚡/day` : drain ? `−${drain}⚡/day` : '';
+      sub = drain ? `−${drain} Energy/day` : '';
     } else {
       const t = s.turrets[entry.iid]!;
       art = turretArt(t.def);
@@ -96,7 +98,12 @@ export function renderFactory(s: State): Node {
     `<text x="${stock.x + BW / 2}" y="${stock.y - 6}" text-anchor="middle" class="node-label">Stockpile</text><rect x="${stock.x}" y="${stock.y}" width="${BW}" height="${BH}" class="node-hit"/></g>`);
   parts.push(`<g data-node="trader"><rect x="${trader.x}" y="${trader.y}" width="${BW}" height="${BH}" rx="6" class="slot-bg${fixedSel(trader.ref)}"/><g transform="translate(${trader.x},${trader.y})">${traderArt()}</g>` +
     `<text x="${trader.x + BW / 2}" y="${trader.y + BH + 12}" text-anchor="middle" class="node-label">Trader</text><rect x="${trader.x}" y="${trader.y}" width="${BW}" height="${BH}" class="node-hit"/></g>`);
+  for (let i = 0; i < s.solar; i++) {
+    parts.push(`<g transform="translate(${PAD + i * 40},${PAD + 6}) scale(0.42)">${solarArt()}</g>`);
+  }
+  if (s.solar) parts.push(`<text x="${PAD}" y="${PAD}" class="node-sub">roof: +${s.solar * SOLAR_PANEL.energyPerDay} Energy/day</text>`);
   const fr = freshRaid(s);
+  const unseen = fr && fr.at !== ui.seenRaidAt;
   const raidMode = fr ? (fr.repelled ? 'repelled' : 'breach') : 'quiet';
   parts.push(`<g data-node="raid" class="${fr ? 'anim-pop' : ''}"><g transform="translate(${raidBox.x},${raidBox.y})">${raidArt(raidMode)}</g>` +
     `<text x="${raidBox.x + BW / 2}" y="${raidBox.y + BH + 12}" text-anchor="middle" class="node-label" style="fill:${fr ? (fr.repelled ? 'var(--ok)' : 'var(--danger)') : 'var(--ink-dim)'}">${fr ? (fr.repelled ? 'Repelled' : 'Breach!') : 'Quiet'}</text><rect x="${raidBox.x}" y="${raidBox.y}" width="${BW}" height="${BH}" class="node-hit"/></g>`);
@@ -111,6 +118,7 @@ export function renderFactory(s: State): Node {
     const turrets = nodes.filter(n => n.ref.kind === 'turret').map(n => ({ iid: (n.ref as { iid: string }).iid, slot: n.slot!, cx: n.x + BW / 2, cy: n.y + BH / 2 }));
     setTimeout(() => playRaid(floor, fr, { turrets, raidBox: { cx: raidBox.x + BW / 2, top: raidBox.y + 8 }, lineY }), 250);
   }
+  const solarMax = solarCap(s);
 
   const eb = dailyEnergyBalance(s);
   const next = nextFactorySize(s);
@@ -120,7 +128,10 @@ export function renderFactory(s: State): Node {
     modeBar(s),
     floor,
     hint(),
-    fr && h(`div.notice.${fr.repelled ? 'ok' : 'danger'}.row.between`, h('span', raidLine(fr)), h('button.btn.sm', { onclick: () => { ui.playedRaidAt = 0; store.refresh(); } }, 'Replay')),
+    unseen && fr && h(`div.notice.${fr.repelled ? 'ok' : 'danger'}.stack`,
+      h('p', 'Raiders followed your tracks back and assaulted your base while you were gone.'),
+      h('p.small', raidLine(fr)),
+      h('div.seg.c2', h('button.btn.sm', { onclick: () => { ui.playedRaidAt = 0; store.refresh(); } }, 'Replay'), h('button.btn.sm', { onclick: () => { markSeen(fr.at); store.refresh(); } }, 'Got it'))),
     s.energy <= 0 && h('div.notice.danger', 'No Energy — the floor is dark. Log a flexibility session, or buy an emergency quota in Trade.'),
     h('div.card.row.between',
       h('div', h('div.small.dim', 'Energy per day'), h('div', h('b', { className: eb.net < 0 ? 'c-strength' : 'c-energy' }, `${eb.net > 0 ? '+' : ''}${eb.net}`), h('span.dim.small', `  (−${eb.drain} drain, +${eb.solar} solar)`))),
@@ -130,7 +141,10 @@ export function renderFactory(s: State): Node {
       (Object.keys(INFRA) as Array<keyof typeof INFRA>).map(id => {
         const d = INFRA[id]; const built = s.infra.includes(id);
         return h('div.row.between', h('div', h('div', d.name, built && h('span.c-energy', ' ✓')), !built && costChips(s, d.cost)), !built && h('button.btn.sm', { onclick: () => act({ type: 'build_infra', infra: id }) }, 'Build'));
-      })),
+      }),
+      h('div.row.between',
+        h('div', h('div', `${SOLAR_PANEL.name}s  ${s.solar} / ${solarMax}`), h('div.dim.small', `On the roof, no slot needed. +${SOLAR_PANEL.energyPerDay} Energy/day each; bigger factories hold more.`), s.solar < solarMax && costChips(s, SOLAR_PANEL.cost)),
+        s.solar < solarMax && h('button.btn.sm', { onclick: () => act({ type: 'build_solar' }) }, 'Add'))),
     s.raidHistory.length > 0 && h('button.btn.block', { onclick: () => openRaidHistory() }, `Raid log (${s.raidHistory.length})`),
   );
 }
@@ -230,9 +244,9 @@ function onFloorTap(e: Event, s: State): void {
     openConnectSheet(s, from, ref);
     return;
   }
-  if (fixed === 'raid') { openRaidHistory(); return; }
+  if (fixed === 'raid') { const fr = freshRaid(s); if (fr) markSeen(fr.at); openRaidHistory(); return; }
   if (fixed === 'stock') { openStockSheet(); return; }
-  if (fixed === 'trader') { toast('Sell in the Trade tab, or connect a belt here to auto-sell.'); return; }
+  if (fixed === 'trader') { openTraderSheet(); return; }
   if (slot === null) return;
   const entry = s.slots[slot];
   if (!entry) { openBuildSheet(s, slot); return; }
@@ -261,10 +275,10 @@ function openBuildSheet(s: State, slot: number): void {
     }) : BUILDING_IDS.map(id => {
       const d = BUILDINGS[id];
       const blocker = buildingBlocker(s, d);
-      if (blocker === 'Already built') return null;
+      const have = Object.values(s.buildings).filter(b => b.def === id).length;
       return h(`div.card.flat.stack${blocker ? '.locked' : ''}`,
         h('div.row.between',
-          h('div', h('b', d.name), h('div.dim.small', d.recipes.map(r => `${r.name} (${r.labor}L ${r.energy}E)`).join(' · ') || `+${d.passiveEnergy} Energy/day`)),
+          h('div', h('b', d.name, have > 0 && h('span.dim.small', `  (you have ${have})`)), h('div.dim.small', d.recipes.map(r => `${r.name} (${r.labor}L ${r.energy}E)`).join(' · '))),
           h('button.btn.sm', { disabled: !!blocker, onclick: () => { if (act({ type: 'build', building: id, slot })) close(); } }, 'Build')),
         blocker ? h('div.small.c-strength', blocker) : costChips(s, d.cost));
     }),
@@ -278,11 +292,10 @@ function openBuildingSheet(iid: string): void {
     const b = s.buildings[iid];
     if (!b) { close(); return h('div'); }
     const def = BUILDINGS[b.def];
-    const u = b.upgrade ? def.upgrades.find(u => u.id === b.upgrade) : null;
     const belts = s.conveyors.filter(c => touches(c, 'building', iid));
     return h('div.stack',
       h('div.row', svg(`<svg width="96" height="64" viewBox="0 0 96 64">${buildingArt(b.def, b.upgrade)}</svg>`),
-        h('div', h('h2', u ? u.name : def.name), h('div.dim.small', `${activeDrain(b)} Energy/day upkeep${def.passiveEnergy ? ` · +${def.passiveEnergy} Energy/day` : ''}`))),
+        h('div', h('h2', buildingLabel(s, iid)), h('div.dim.small', `${activeDrain(b)} Energy/day upkeep`))),
       activeRecipes(b).map(r => recipeRow(s, b, r.id)),
       !b.upgrade && def.upgrades.length > 0 && h('div.stack',
         h('h3', 'Choose a path (permanent)'),
@@ -305,12 +318,20 @@ function recipeRow(s: State, b: BuildingInst, recipeId: string): Node {
   const out = h('span.dim.small');
   const upd = () => { out.textContent = `→ ${bagText(r.output, n)} · costs ${r.labor * n} Labor, ${r.energy * n} Energy`; };
   upd();
+  const outIds = Object.keys(r.output) as ResourceId[];
+  const stockLine = h('div.row.wrap', { style: { gap: '6px' } }, h('span.dim.small', 'In stock:'), outIds.map(id => h('span.chip', icon(id, 14), `${s.res[id]} ${RESOURCES[id].name}`)));
+  const makeBtn = h('button.btn.primary', { disabled: max === 0, onclick: () => {
+    if (act({ type: 'produce', iid: b.iid, recipe: r.id, units: n })) {
+      navigator.vibrate?.(25);
+      const float = h('span.float-gain', `+${bagText(r.output, n)}`);
+      makeBtn.append(float); setTimeout(() => float.remove(), 1200);
+    }
+  } }, 'Make');
   return h('div.card.flat.stack',
     h('div.row.between', h('b', r.name), h('span.dim.small', `can make ${max}`)),
     h('div.row', bagChips(r.inputs), h('span.dim', '→'), bagChips(r.output), r.bonus && h('span.chip.c-gold', `${Math.round(r.bonus.chance * 100)}% bonus ${RESOURCES[r.bonus.resource].name}`)),
-    h('div.row', h('div', { style: { flex: '1' } }, stepper(n, 1, Math.max(1, max), v => { n = v; upd(); })),
-      h('button.btn.primary', { disabled: max === 0, onclick: () => act({ type: 'produce', iid: b.iid, recipe: r.id, units: n }) }, 'Make')),
-    out);
+    h('div.row', h('div', { style: { flex: '1' } }, stepper(n, 1, Math.max(1, max), v => { n = v; upd(); })), makeBtn),
+    out, stockLine);
 }
 
 function openTurretSheet(iid: string): void {
@@ -360,11 +381,25 @@ function beltRow(s: State, c: Conveyor): Node {
 }
 
 function openStockSheet(): void {
-  const s = store.state;
-  const rows = (Object.keys(RESOURCES) as ResourceId[]).filter(id => s.res[id] > 0);
-  sheet(() => h('div.stack', h('h2', 'Stockpile'),
-    rows.length === 0 ? h('div.empty', 'Nothing here yet. Cardio brings loot.') :
-      h('div.res-list', rows.map(id => h('div.res', icon(id), RESOURCES[id].name, h('b', String(s.res[id])))))));
+  liveSheet(() => {
+    const s = store.state;
+    const rows = (Object.keys(RESOURCES) as ResourceId[]).filter(id => s.res[id] > 0);
+    const belts = s.conveyors.filter(c => c.from.kind === 'stock');
+    return h('div.stack', h('h2', 'Stockpile'),
+      rows.length === 0 ? h('div.empty', 'Nothing here yet. Cardio brings loot.') :
+        h('div.res-list', rows.map(id => h('div.res', icon(id), RESOURCES[id].name, h('b', String(s.res[id]))))),
+      belts.length > 0 && h('div.stack', h('h3', 'Belts out'), belts.map(c => beltRow(s, c))));
+  });
+}
+function openTraderSheet(): void {
+  liveSheet(close => {
+    const s = store.state;
+    const belts = s.conveyors.filter(c => c.to.kind === 'trader');
+    return h('div.stack', h('h2', 'Trader'),
+      h('p.dim.small', 'Belts ending here sell their goods every day. Sell by hand in the Trade tab.'),
+      belts.length > 0 ? h('div.stack', h('h3', 'Belts in'), belts.map(c => beltRow(s, c))) : h('div.empty', 'No belts deliver here yet. Use Connect to lay one.'),
+      h('button.btn.block', { onclick: () => { close(); go('trade'); } }, 'Open Trade'));
+  });
 }
 
 function openRaidHistory(): void {
@@ -392,10 +427,9 @@ const touches = (c: Conveyor, kind: string, iid: string) =>
 function nodeName(s: State, r: NodeRef): string {
   if (r.kind === 'stock') return 'Stockpile';
   if (r.kind === 'trader') return 'Trader';
-  if (r.kind === 'building') { const b = s.buildings[r.iid]; return b ? BUILDINGS[b.def].name : '?'; }
+  if (r.kind === 'building') return buildingLabel(s, r.iid);
   const t = s.turrets[r.iid]; return t ? TURRETS[t.def].name : '?';
 }
 const bagText = (b: Partial<Record<ResourceId, number>>, times: number) =>
   (Object.entries(b) as Array<[ResourceId, number]>).map(([id, n]) => `${n * times} ${RESOURCES[id].name}`).join(', ');
 const esc = (x: string) => x.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-void FACTORY_SIZES;

@@ -62,3 +62,15 @@ Everything else is 1:1 with the shipped v1 `index.html`.
 - Building-gated contract amounts (e.g. "Refine 3 Silver") are new numbers; v1's doc only gave the reward range.
 - The raid recap is animated on the Factory floor; the raid log keeps the last 20 and is browsable.
 - Nutrition, loot split, premium/research/steel drop chances and starting Energy follow the v1 source (the design doc had simplified or omitted them).
+
+## Round 1 (Sept 2026) — mechanics after the first play test
+
+- Munitions Press (main floor): Cartridges (Assault Rifle) and Hardened Rounds (Minigun); its Heavy Press upgrade adds Alloy Rounds (Double Minigun). Turret ammo is now Iron Ore → Iron → Cartridges → Hardened Rounds → Alloy Rounds. Default ammo load 10.
+- Foundry can Temper Steel (5 Iron + 3 Coke → 1 Hardened Steel), so alloy is no longer capped by rare loot.
+- Machine Shop is the gateway to the workshop: every other workshop building costs 1–3 Precision Components. Workshop building Gold +25%, Minigun/Double Minigun Gold +30%, factory size 3/4 Gold +40%, top two gear tiers cost more.
+- Solar panels moved to the roof: no slot, capped at 1/2/3/4 by factory size.
+- Crusher paths rebalanced: Hydraulic is Labor-free, Sifting costs 2 Labor with the ore bonus.
+- Buildings can be duplicated ("Furnace 2").
+- Stockpile and Trader have sheets listing their belts (removable). Production shows the output in stock, floats the gain, and vibrates on phones.
+- Raid notice uses the new text, auto-plays once, and clears with "Got it". Settings (backup, full reset) moved to the gear icon in the top bar. Trading Post split into Market / Contracts with grouped selling and a raw-surplus button.
+- Save version 3; v2 saves upgrade in place.

@@ -3,14 +3,14 @@ import { store } from '../store';
 import { act, armed, sheet, toast } from '../ui';
 import { TECHS, ZONES, C, effectiveLevel, hasTech, techAvailable, type State, type TechId } from '../../engine';
 
-type Sub = 'research' | 'zones' | 'history' | 'settings';
+type Sub = 'research' | 'zones' | 'history';
 let sub: Sub = 'research';
 
 export function renderLab(s: State): Node {
-  const tabs: Array<[Sub, string]> = [['research', 'Research'], ['zones', 'Zones'], ['history', 'History'], ['settings', 'Settings']];
+  const tabs: Array<[Sub, string]> = [['research', 'Research'], ['zones', 'Zones'], ['history', 'History']];
   return h('div.stack',
-    h('div.seg.c4', tabs.map(([id, label]) => h(`button.btn.sm${sub === id ? '.on' : ''}`, { onclick: () => { sub = id; store.refresh(); } }, label))),
-    sub === 'research' ? research(s) : sub === 'zones' ? zones(s) : sub === 'history' ? history(s) : settings(s));
+    h('div.seg.c3', tabs.map(([id, label]) => h(`button.btn.sm${sub === id ? '.on' : ''}`, { onclick: () => { sub = id; store.refresh(); } }, label))),
+    sub === 'research' ? research(s) : sub === 'zones' ? zones(s) : history(s));
 }
 
 function research(s: State): Node {
@@ -56,6 +56,9 @@ function history(s: State): Node {
     s.archived.sessions > 0 && h('p.dim.small', `${s.archived.sessions} older sessions are counted in your lifetime totals but no longer listed.`));
 }
 
+export function settingsSheet(): void {
+  sheet(() => settings(store.state));
+}
 function settings(s: State): Node {
   return h('div.stack',
     h('div.card.stack', h('h3', 'Backup'),
@@ -63,9 +66,9 @@ function settings(s: State): Node {
       h('div.seg.c2',
         h('button.btn', { onclick: async () => { try { await navigator.clipboard.writeText(store.export()); toast('Save copied to clipboard.', 'ok'); } catch { toast('Could not copy.', 'danger'); } } }, 'Copy save'),
         h('button.btn', { onclick: () => importSheet() }, 'Paste save'))),
-    h('div.card.stack', h('h3', 'Danger zone'),
-      h('p.dim.small', 'Wipes everything and starts over. There is no undo.'),
-      armed('Reset factory', () => store.reset())),
+    h('div.card.stack', h('h3', 'Reset all progress'),
+      h('p.dim.small', 'Wipes the factory, avatar, history and gear, and starts from the character picker. There is no undo — copy your save first if unsure.'),
+      armed('Reset everything', () => store.reset())),
     h('p.dim.small', { style: { textAlign: 'center' } }, `Fitness Factory 1.0 · save v${s.version}`));
 }
 function importSheet(): void {
