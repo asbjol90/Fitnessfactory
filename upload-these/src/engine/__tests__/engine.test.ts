@@ -350,24 +350,6 @@ describe('round 1 mechanics', () => {
   });
 });
 
-describe('bought contract slots', () => {
-  it('adds a slot for the week at rising prices, resets Monday', () => {
-    let { s, rng } = fresh(4);
-    s = give(s, { gold: 200 });
-    expect(s.contracts.slots).toHaveLength(2);
-    s = run(s, rng, [{ type: 'buy_contract_slot' }]);
-    expect(s.contracts.slots).toHaveLength(3);
-    expect(s.gold).toBe(175);
-    s = run(s, rng, [{ type: 'buy_contract_slot' }, { type: 'buy_contract_slot' }]);
-    expect(s.contracts.slots).toHaveLength(5);
-    expect(s.gold).toBe(75);
-    expect(reduce(s, { type: 'buy_contract_slot' }, { now: T0, rng }).error).toMatch(/No more/);
-    const next = reduce(s, { type: 'tick' }, { now: T0 + 7 * DAY, rng }).state;
-    expect(next.contracts.bought).toBe(0);
-    expect(next.contracts.slots).toHaveLength(2);
-  });
-});
-
 describe('data integrity', () => {
   it('every recipe input/output is a known resource and every upgrade has a recipe set', () => {
     for (const b of Object.values(BUILDINGS)) {

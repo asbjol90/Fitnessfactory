@@ -10,7 +10,7 @@ import {
 import { BUILDINGS, INFRA, SOLAR_PANEL, TURRETS, type Cost } from './data/factory';
 import {
   buildingBlocker, effectiveLevel, energyBonus, freeSlots, gearUpgradeCost, laborBonus, lootBonus, naturalLevel,
-  nextContractSlotPrice, nextFactorySize, sellBonus, sellLaborCost, slotIsWall, solarCap, statMult, techAvailable,
+  nextFactorySize, sellBonus, sellLaborCost, slotIsWall, solarCap, statMult, techAvailable,
 } from './derive';
 import { GameError } from './errors';
 import { runRecipe } from './production';
@@ -80,7 +80,6 @@ function apply(s: State, a: Action, ctx: Ctx, ev: GameEvent[]): void {
     case 'build_solar': return buildSolar(s, ev);
     case 'upgrade_factory': return upgradeFactory(s, ev);
     case 'claim_contract': return claimContract(s, a.id, ev);
-    case 'buy_contract_slot': return buyContractSlot(s, ctx, ev);
     case 'craft_gear': return craftGear(s, a.stat, ev);
     case 'emergency_energy': return emergencyEnergy(s, ev);
   }
@@ -482,18 +481,6 @@ function upgradeFactory(s: State, ev: GameEvent[]): void {
   ];
   s.factorySize = next.level;
   ev.push({ type: 'factory_size', level: next.level });
-}
-
-function buyContractSlot(s: State, ctx: Ctx, ev: GameEvent[]): void {
-  const price = nextContractSlotPrice(s);
-  if (price === null) throw new GameError('No more contracts on offer this week.');
-  if (s.gold < price) throw new GameError(`Needs ${price} Gold.`);
-  const before = s.contracts.slots.length;
-  s.contracts.bought = (s.contracts.bought ?? 0) + 1;
-  topUpContracts(s, ctx.rng);
-  if (s.contracts.slots.length === before) { s.contracts.bought--; throw new GameError('Nothing left in the pool you qualify for.'); }
-  s.gold -= price;
-  ev.push({ type: 'contract_slot', cost: price });
 }
 
 function claimContract(s: State, id: string, ev: GameEvent[]): void {

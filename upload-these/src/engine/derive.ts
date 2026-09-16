@@ -50,11 +50,8 @@ export function techAvailable(s: State, t: TechId): boolean {
   const d = TECHS[t];
   return !hasTech(s, t) && d.requires.every(r => hasTech(s, r));
 }
-export const freeContractSlots = (s: State) =>
+export const contractSlotCount = (s: State) =>
   hasTech(s, 'endurance_training') ? C.CONTRACT_SLOTS_WITH_ENDURANCE : C.CONTRACT_SLOTS_BASE;
-export const contractSlotCount = (s: State) => freeContractSlots(s) + (s.contracts.bought ?? 0);
-/** Price of the next extra slot this week, or null when sold out. */
-export const nextContractSlotPrice = (s: State): number | null => C.CONTRACT_SLOT_PRICES[s.contracts.bought ?? 0] ?? null;
 
 // ---------------------------------------------------------------- Factory
 export const factorySize = (s: State) => FACTORY_SIZES[s.factorySize - 1]!;

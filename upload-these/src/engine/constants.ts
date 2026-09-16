@@ -73,8 +73,6 @@ export const C = {
   // --- Contracts ----------------------------------------------------------
   CONTRACT_SLOTS_BASE: 2,
   CONTRACT_SLOTS_WITH_ENDURANCE: 3,
-  /** Extra weekly contract slots for sale, price per slot in order. Resets Monday. */
-  CONTRACT_SLOT_PRICES: [25, 40, 60] as const,
 
   // --- Avatar -------------------------------------------------------------
   /** Level 1..5 → multiplier. */

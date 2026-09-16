@@ -79,25 +79,3 @@ export function stepper(value: number, min: number, max: number, onChange: (v: n
     input,
     h('button.btn', { onclick: () => set(Number(input.value) + step) }, '+'));
 }
-
-/**
- * Long-press (≈450 ms) on an element. Fires `onLong` and marks the element so
- * the following click can be ignored; a short tap behaves as normal.
- */
-export function longPress(el: HTMLElement | SVGElement, onLong: (target: Element) => void, ms = 450): void {
-  let timer: number | null = null;
-  let fired = false;
-  let startX = 0, startY = 0;
-  const cancel = () => { if (timer !== null) { clearTimeout(timer); timer = null; } el.classList.remove('pressing'); };
-  el.addEventListener('pointerdown', (ev: Event) => {
-    const e = ev as PointerEvent;
-    fired = false; startX = e.clientX; startY = e.clientY;
-    const target = e.target as Element;
-    el.classList.add('pressing');
-    timer = window.setTimeout(() => { fired = true; timer = null; el.classList.remove('pressing'); navigator.vibrate?.(15); onLong(target); }, ms);
-  });
-  el.addEventListener('pointermove', (ev: Event) => { const e = ev as PointerEvent; if (Math.hypot(e.clientX - startX, e.clientY - startY) > 8) cancel(); });
-  for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, cancel);
-  el.addEventListener('click', e => { if (fired) { e.stopImmediatePropagation(); e.preventDefault(); fired = false; } }, true);
-  el.addEventListener('contextmenu', e => e.preventDefault());
-}

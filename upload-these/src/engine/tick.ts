@@ -31,7 +31,6 @@ export function advanceTime(s: State, now: number, rng: Rng, events: GameEvent[]
       s.weekKey = wk;
       s.weekly = emptyWeekly();
       s.emergencyUsesThisWeek = 0;
-      s.contracts.bought = 0;
       events.push({ type: 'week' });
     }
     rollContracts(s, rng);

@@ -1,11 +1,9 @@
 import { h, svg } from '../dom';
 import { store } from '../store';
-import { act, armed, bagChips, costChips, icon, liveSheet, longPress, sheet, stepper } from '../ui';
-import { buildingArt, raidArt, solarArt, traderArt, turretArt } from '../../art/nodes';
+import { act, armed, bagChips, costChips, icon, liveSheet, sheet, stepper, toast } from '../ui';
+import { buildingArt, iconInner, raidArt, solarArt, stockArt, traderArt, turretArt } from '../../art/nodes';
 import { go } from '../main';
 import { playRaid } from '../raidplay';
-import { belt, beltItems, emptyPad, environment, floorDefs, pad, stockRack } from '../../art/floor';
-import { isBuildingId, isTurretId, openBuildingInfo, openTurretInfo } from './info';
 import {
   BUILDINGS, BUILDING_IDS, C, INFRA, RESOURCES, SOLAR_PANEL, TURRETS, TURRET_IDS, ZONES,
   activeDrain, activeRecipes, buildingBlocker, buildingLabel, dailyEnergyBalance, factorySize, freshRaid, hasTech, nextFactorySize,
@@ -20,7 +18,7 @@ const ui: { mode: Mode; sel: number | null; selNode: NodeRef | null; playedRaidA
 const markSeen = (at: number) => { ui.seenRaidAt = at; try { localStorage.setItem(SEEN_KEY, String(at)); } catch { /* ignore */ } };
 
 // Geometry (SVG units)
-const BW = 96, BH = 64, GX = 12, GY = 36, COLS = 4, PAD = 32;
+const BW = 96, BH = 64, GX = 12, GY = 36, COLS = 4, PAD = 18;
 /** Belt lane: horizontal runs sit this far below a row's boxes (under the label). */
 const LANE = 26;
 const W = PAD * 2 + COLS * BW + (COLS - 1) * GX;
@@ -30,15 +28,12 @@ interface Placed { x: number; y: number; ref: NodeRef; slot?: number }
 export function renderFactory(s: State): Node {
   const size = factorySize(s);
   const rows = Math.ceil(size.interior / COLS);
-  const roomTop = 10;
-  const stockY = roomTop + 22;
+  const stockY = PAD + 12;
   const gridY = stockY + BH + GY;
   const wallY = gridY + rows * (BH + GY);
-  const rampartY = wallY - 10;
-  const lineY = wallY + BH + LANE + 6;
-  const outY = lineY + 32;
-  const H = outY + BH + PAD + 8;
-  const gateX = PAD / 2 + 1;
+  const lineY = wallY + BH + LANE + 8;
+  const outY = lineY + 18;
+  const H = outY + BH + PAD;
 
   const nodes: Placed[] = [];
   const slotPos = (i: number): { x: number; y: number } => {
@@ -58,7 +53,10 @@ export function renderFactory(s: State): Node {
   nodes.push(stock, trader);
 
   const parts: string[] = [];
-  parts.push(environment({ W, H, roomTop, rampartY, lineY, gateX }));
+  // Wall divider
+  parts.push(`<line x1="${PAD}" y1="${lineY}" x2="${W - PAD}" y2="${lineY}" class="wall-line"/>`);
+  parts.push(`<text x="${W - PAD}" y="${lineY - 5}" text-anchor="end" class="wall-text">WALL</text>`);
+  parts.push(`<text x="${W - PAD}" y="${lineY + 13}" text-anchor="end" class="wall-text" style="fill:var(--ink-dim)">OUTSIDE</text>`);
 
   // Slots
   s.slots.forEach((entry, i) => {
@@ -66,7 +64,8 @@ export function renderFactory(s: State): Node {
     const wall = slotIsWall(s, i);
     const sel = ui.sel === i;
     if (!entry) {
-      parts.push(`<g data-slot="${i}" class="node-hit">${emptyPad(x, y, BW, BH, wall ? 'turret' : 'build', sel)}<rect x="${x}" y="${y}" width="${BW}" height="${BH}" class="node-hit"/></g>`);
+      parts.push(`<g data-slot="${i}" class="node-hit"><rect x="${x}" y="${y}" width="${BW}" height="${BH}" rx="6" class="slot-bg empty${sel ? ' sel' : ''}"/>` +
+        `<text x="${x + BW / 2}" y="${y + BH / 2 + 4}" text-anchor="middle" class="node-sub">${wall ? '+ turret' : '+ build'}</text><rect x="${x}" y="${y}" width="${BW}" height="${BH}" class="node-hit"/></g>`);
       return;
     }
     const ref: NodeRef = entry.kind === 'building' ? { kind: 'building', iid: entry.iid } : { kind: 'turret', iid: entry.iid };
@@ -84,9 +83,8 @@ export function renderFactory(s: State): Node {
       label = TURRETS[t.def].name;
       sub = `ammo ${t.ammo}/${C.AMMO_CAP}`;
     }
-    const dark = entry.kind === 'building' && s.energy <= 0;
-    const idle = dark ? ' anim-idle-off' : '';
-    parts.push(`<g data-slot="${i}" class="node${idle}">${pad(x, y, BW, BH, sel ? 'sel' : dark ? 'dark' : 'normal')}` +
+    const idle = entry.kind === 'building' && s.energy <= 0 ? ' anim-idle-off' : '';
+    parts.push(`<g data-slot="${i}" class="node${idle}"><rect x="${x}" y="${y}" width="${BW}" height="${BH}" rx="6" class="slot-bg${sel ? ' sel' : ''}"/>` +
       `<g transform="translate(${x},${y}) scale(${BW / 96})">${art}</g>` +
       (entry.kind === 'turret' ? ammoBar(x, y, s.turrets[entry.iid]!) : '') +
       `<text x="${x + BW / 2}" y="${y + BH + 12}" text-anchor="middle" class="node-label">${esc(label)}</text>` +
@@ -95,15 +93,15 @@ export function renderFactory(s: State): Node {
   });
 
   // Fixed nodes
-  const fixedSel = (r: NodeRef): 'sel' | 'normal' => (ui.selNode && ui.selNode.kind === r.kind ? 'sel' : 'normal');
-  parts.push(`<g data-node="stock">${pad(stock.x, stock.y, BW, BH, fixedSel(stock.ref))}${stockRack(s, stock.x, stock.y, BW, BH)}` +
+  const fixedSel = (r: NodeRef) => ui.selNode && ui.selNode.kind === r.kind ? ' sel' : '';
+  parts.push(`<g data-node="stock"><rect x="${stock.x}" y="${stock.y}" width="${BW}" height="${BH}" rx="6" class="slot-bg${fixedSel(stock.ref)}"/><g transform="translate(${stock.x},${stock.y})">${stockArt()}</g>` +
     `<text x="${stock.x + BW / 2}" y="${stock.y - 6}" text-anchor="middle" class="node-label">Stockpile</text><rect x="${stock.x}" y="${stock.y}" width="${BW}" height="${BH}" class="node-hit"/></g>`);
-  parts.push(`<g data-node="trader">${pad(trader.x, trader.y, BW, BH, fixedSel(trader.ref))}<g transform="translate(${trader.x},${trader.y})">${traderArt()}</g>` +
+  parts.push(`<g data-node="trader"><rect x="${trader.x}" y="${trader.y}" width="${BW}" height="${BH}" rx="6" class="slot-bg${fixedSel(trader.ref)}"/><g transform="translate(${trader.x},${trader.y})">${traderArt()}</g>` +
     `<text x="${trader.x + BW / 2}" y="${trader.y + BH + 12}" text-anchor="middle" class="node-label">Trader</text><rect x="${trader.x}" y="${trader.y}" width="${BW}" height="${BH}" class="node-hit"/></g>`);
   for (let i = 0; i < s.solar; i++) {
-    parts.push(`<g transform="translate(${W - PAD - 40 - i * 40},${roomTop + 6}) scale(0.42)">${solarArt()}</g>`);
+    parts.push(`<g transform="translate(${PAD + i * 40},${PAD + 6}) scale(0.42)">${solarArt()}</g>`);
   }
-  if (s.solar) parts.push(`<text x="${W - PAD}" y="${roomTop + 46}" text-anchor="end" class="node-sub">roof +${s.solar * SOLAR_PANEL.energyPerDay}/day</text>`);
+  if (s.solar) parts.push(`<text x="${PAD}" y="${PAD}" class="node-sub">roof: +${s.solar * SOLAR_PANEL.energyPerDay} Energy/day</text>`);
   const fr = freshRaid(s);
   const unseen = fr && fr.at !== ui.seenRaidAt;
   const raidMode = fr ? (fr.repelled ? 'repelled' : 'breach') : 'quiet';
@@ -113,17 +111,8 @@ export function renderFactory(s: State): Node {
   // Belts (drawn under nodes → prepend)
   const stale = new Set(staleConveyors(s).map(c => c.id));
   const belts = s.conveyors.map((c, i) => beltMarkup(c, nodes, stale.has(c.id), i, lineY)).join('');
-  // Belts render above the environment but below the nodes.
-  const env = parts.shift()!;
-  const floor = svg(`<svg class="floor" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${floorDefs()}${env}${belts}${parts.join('')}</svg>`) as SVGSVGElement;
+  const floor = svg(`<svg class="floor" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${belts}${parts.join('')}</svg>`) as SVGSVGElement;
   floor.addEventListener('click', e => onFloorTap(e, s));
-  longPress(floor, target => {
-    const g = target.closest('[data-slot]') as HTMLElement | null;
-    if (!g) return;
-    const entry = s.slots[Number(g.dataset.slot)];
-    if (!entry) return;
-    if (entry.kind === 'building') openBuildingInfo(s.buildings[entry.iid]!.def); else openTurretInfo(s.turrets[entry.iid]!.def);
-  });
   if (fr && ui.playedRaidAt !== fr.at) {
     ui.playedRaidAt = fr.at;
     const turrets = nodes.filter(n => n.ref.kind === 'turret').map(n => ({ iid: (n.ref as { iid: string }).iid, slot: n.slot!, cx: n.x + BW / 2, cy: n.y + BH / 2 }));
@@ -174,7 +163,7 @@ function beltMarkup(c: Conveyor, nodes: Placed[], stale: boolean, idx: number, l
   const ax = a.x + BW / 2 + off, bx = b.x + BW / 2 + off;
   if (c.to.kind === 'trader') {
     // Shipping lane: down into the lane, west to the gutter, south past the wall, east into the Trader.
-    const gutter = PAD / 2 + off / 2;
+    const gutter = PAD / 2 + off;
     pts.push([ax, a.y + BH], [ax, a.y + BH + LANE], [gutter, a.y + BH + LANE], [gutter, b.y + BH / 2 + off], [b.x, b.y + BH / 2 + off]);
   } else if (b.y > a.y) {
     const laneA = a.y + BH + LANE, laneB = b.y - GY + LANE; // lane under source row / lane just above target row
@@ -194,10 +183,13 @@ function beltMarkup(c: Conveyor, nodes: Placed[], stale: boolean, idx: number, l
     // Same row: out the bottom, along the lane, up into the target.
     pts.push([ax, a.y + BH], [ax, a.y + BH + LANE], [bx, a.y + BH + LANE], [bx, b.y + BH]);
   }
-  const d = rounded(pts, 10);
+  const d = rounded(pts, 8);
   const id = `belt${idx}`;
+  const items = [0, 1, 2].map(k =>
+    `<g><animateMotion dur="4s" repeatCount="indefinite" begin="${(k * 1.33 - 4).toFixed(2)}s" rotate="0"><mpath href="#${id}"/></animateMotion>` +
+    `<g transform="translate(-8,-8)">${iconInner(c.resource)}</g></g>`).join('');
   void lineY;
-  return `<g class="belt-g" data-belt="${c.id}">${belt(d, id, stale)}${beltItems(id, c.resource, c.amount)}</g>`;
+  return `<g class="belt-g" data-belt="${c.id}"><path id="${id}" d="${d}" class="belt${stale ? ' stale' : ''}"/><path d="${d}" class="belt-dash${stale ? ' stale' : ''}"/>${items}</g>`;
 }
 /** Polyline with rounded corners. */
 function rounded(pts: Array<[number, number]>, r: number): string {
@@ -254,7 +246,7 @@ function onFloorTap(e: Event, s: State): void {
   }
   if (fixed === 'raid') { const fr = freshRaid(s); if (fr) markSeen(fr.at); openRaidHistory(); return; }
   if (fixed === 'stock') { openStockSheet(); return; }
-  if (fixed === 'trader') { go('trade'); return; }
+  if (fixed === 'trader') { openTraderSheet(); return; }
   if (slot === null) return;
   const entry = s.slots[slot];
   if (!entry) { openBuildSheet(s, slot); return; }
@@ -276,25 +268,20 @@ function openBuildSheet(s: State, slot: number): void {
     h('h2', wall ? 'Place a turret' : 'Build'),
     wall ? TURRET_IDS.map(id => {
       const d = TURRETS[id];
-      const card = h('div.card.flat.stack.pressable',
+      return h('div.card.flat.stack',
         h('div.row.between', h('div', h('b', d.name), h('div.dim.small', `${d.shots} shots × ${d.damage} dmg · fires ${RESOURCES[d.ammo].name}`)),
           h('button.btn.sm', { onclick: () => { if (act({ type: 'build_turret', turret: id, slot })) close(); } }, 'Place')),
         costChips(s, d.cost));
-      longPress(card, () => openTurretInfo(id));
-      return card;
     }) : BUILDING_IDS.map(id => {
       const d = BUILDINGS[id];
       const blocker = buildingBlocker(s, d);
       const have = Object.values(s.buildings).filter(b => b.def === id).length;
-      const card = h(`div.card.flat.stack.pressable${blocker ? '.locked' : ''}`,
+      return h(`div.card.flat.stack${blocker ? '.locked' : ''}`,
         h('div.row.between',
           h('div', h('b', d.name, have > 0 && h('span.dim.small', `  (you have ${have})`)), h('div.dim.small', d.recipes.map(r => `${r.name} (${r.labor}L ${r.energy}E)`).join(' · '))),
           h('button.btn.sm', { disabled: !!blocker, onclick: () => { if (act({ type: 'build', building: id, slot })) close(); } }, 'Build')),
         blocker ? h('div.small.c-strength', blocker) : costChips(s, d.cost));
-      longPress(card, () => openBuildingInfo(id));
-      return card;
     }),
-    h('p.dim.small', 'Hold a card for the full story: recipes, what feeds it, what it feeds.'),
     !wall && h('p.dim.small', 'Turrets go on the wall row. Buildings can spill into wall slots when the interior is full.'),
   ));
 }
@@ -404,6 +391,17 @@ function openStockSheet(): void {
       belts.length > 0 && h('div.stack', h('h3', 'Belts out'), belts.map(c => beltRow(s, c))));
   });
 }
+function openTraderSheet(): void {
+  liveSheet(close => {
+    const s = store.state;
+    const belts = s.conveyors.filter(c => c.to.kind === 'trader');
+    return h('div.stack', h('h2', 'Trader'),
+      h('p.dim.small', 'Belts ending here sell their goods every day. Sell by hand in the Trade tab.'),
+      belts.length > 0 ? h('div.stack', h('h3', 'Belts in'), belts.map(c => beltRow(s, c))) : h('div.empty', 'No belts deliver here yet. Use Connect to lay one.'),
+      h('button.btn.block', { onclick: () => { close(); go('trade'); } }, 'Open Trade'));
+  });
+}
+
 function openRaidHistory(): void {
   const s = store.state;
   sheet(() => h('div.stack', h('h2', 'Raid log'),

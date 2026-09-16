@@ -23,7 +23,6 @@ export type Action =
   | { type: 'build_solar' }
   | { type: 'upgrade_factory' }
   | { type: 'claim_contract'; id: string }
-  | { type: 'buy_contract_slot' }
   | { type: 'craft_gear'; stat: StatId }
   | { type: 'emergency_energy' }
   | { type: 'tick' };
@@ -52,7 +51,6 @@ export type GameEvent =
   | { type: 'solar'; count: number }
   | { type: 'factory_size'; level: number }
   | { type: 'contract_done'; id: string; reward: number }
-  | { type: 'contract_slot'; cost: number }
   | { type: 'gear'; stat: StatId; tier: number }
   | { type: 'day'; days: number; energyBefore: number; energyAfter: number; belts: Array<{ id: string; moved: number }> }
   | { type: 'week' }

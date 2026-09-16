@@ -171,7 +171,6 @@ export function upgradeSave(raw: unknown): State | null {
   const s = raw as State & { version: number };
   if (!s || typeof s !== 'object' || typeof s.version !== 'number' || s.version < 2 || s.version > SAVE_VERSION) return null;
   for (const id of RESOURCE_IDS) if (typeof s.res[id] !== 'number') s.res[id] = 0;
-  if (typeof s.contracts.bought !== 'number') s.contracts.bought = 0;
   if (s.version < 3) {
     // Solar panels moved from slots to the roof; old ammo types changed.
     s.solar = 0;

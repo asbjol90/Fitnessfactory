@@ -98,7 +98,7 @@ export interface State {
   maxZoneTierReached: number;
   raidHistory: RaidRecord[];
 
-  contracts: { slots: ContractSlot[]; completedTotal: number; bought: number };
+  contracts: { slots: ContractSlot[]; completedTotal: number };
   weekly: WeeklyCounters;
   emergencyUsesThisWeek: number;
 
@@ -134,7 +134,7 @@ export function initialState(now: number): State {
     slots: Array.from({ length: 6 }, () => null),
     buildings: {}, turrets: {}, conveyors: [], nextId: 1,
     lootRunsCompleted: 0, runsSinceSteel: 0, maxZoneTierReached: 0, raidHistory: [],
-    contracts: { slots: [], completedTotal: 0, bought: 0 },
+    contracts: { slots: [], completedTotal: 0 },
     weekly: emptyWeekly(),
     emergencyUsesThisWeek: 0,
     nutrition: { dayKey: dayKey(now), counts: emptyHabitCounts() },

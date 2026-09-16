@@ -1,7 +1,7 @@
 import { h } from '../dom';
 import { store } from '../store';
 import { act, icon, sheet, stepper, toast } from '../ui';
-import { C, CONTRACTS, RESOURCE_IDS, RESOURCES, contractById, contractProgress, nextContractSlotPrice, sellBonus, sellLaborCost, type ResourceId, type ResourceTier, type State } from '../../engine';
+import { C, CONTRACTS, RESOURCE_IDS, RESOURCES, contractById, contractProgress, sellBonus, sellLaborCost, type ResourceId, type ResourceTier, type State } from '../../engine';
 
 type Sub = 'market' | 'contracts';
 let sub: Sub = 'market';
@@ -62,9 +62,6 @@ function contracts(s: State): Node {
               h('button.btn.sm', { disabled: !p.ready, onclick: () => act({ type: 'claim_contract', id: slot.id }) }, `Deliver +${d.reward}`)),
           h('div.bar', h('i', { style: { width: `${p.current / p.target * 100}%`, background: slot.done ? 'var(--ok)' : undefined } })));
       }),
-    (() => { const price = nextContractSlotPrice(s); return h('div.row.between', { style: { paddingTop: '4px', borderTop: '1px solid var(--line)' } },
-      h('div', h('div', 'Take on another contract'), h('div.dim.small', price === null ? 'No more on offer this week.' : `${price} Gold for one more slot this week · ${s.contracts.bought} bought so far`)),
-      price !== null && h('button.btn.sm', { onclick: () => act({ type: 'buy_contract_slot' }) }, 'Buy')); })(),
     h('p.dim.small', `${CONTRACTS.length} contracts exist; more unlock as you build and explore.`));
 }
 
