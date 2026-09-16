@@ -29,6 +29,7 @@
   --pad: #2E2921; --pad-hi: #3A342B; --pad-edge: #4A4236; --pad-inner: #38312A;
   --belt: #3A342D; --belt-roller: #5A5248; --belt-rail: #221E18; --belt-chevron: #A2978A;
   --grime: #1B1712;
+  --road: #3A2F24; --road-rut: #2A211A;
 
   --font-display: 'Chakra Petch', 'Trebuchet MS', system-ui, sans-serif;
   --font-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -62,8 +63,8 @@ p { margin: 0; line-height: 1.45; }
 .pool.pulse { animation: pulse .5s ease-out; }
 main { flex: 1; padding: 14px 12px calc(var(--tab-h) + var(--safe-b) + 16px); }
 .tabbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 5; display: flex; justify-content: center; background: var(--panel); border-top: 1px solid var(--line); padding-bottom: var(--safe-b); }
-.tabbar-inner { display: grid; grid-template-columns: repeat(5, 1fr); width: 100%; max-width: 560px; height: var(--tab-h); }
-.tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-family: var(--font-display); font-size: 12px; color: var(--ink-dim); position: relative; }
+.tabbar-inner { display: grid; grid-template-columns: repeat(6, 1fr); width: 100%; max-width: 560px; height: var(--tab-h); }
+.tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-family: var(--font-display); font-size: 11px; color: var(--ink-dim); position: relative; }
 .tab svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .tab.active { color: var(--hazard); }
 .tab.active::before { content: ''; position: absolute; top: 0; left: 20%; right: 20%; height: 3px; background: var(--hazard); border-radius: 0 0 3px 3px; }
@@ -211,3 +212,13 @@ main { flex: 1; padding: 14px 12px calc(var(--tab-h) + var(--safe-b) + 16px); }
 .info-arrow { color: var(--ink-dim); text-align: center; }
 .card.pressable { transition: transform .1s; }
 .card.pressable.pressing { transform: scale(.98); background: var(--panel-2); }
+
+/* ---------- defence ---------- */
+.field { width: 100%; height: auto; background: var(--bg); border-radius: var(--radius); border: 1px solid var(--line); touch-action: pan-y; user-select: none; }
+.field .raider-g { transition: transform .55s linear; }
+.field .raider-g.breached { opacity: .6; }
+.field .tracer { animation: tracer .45s ease-out forwards; }
+@keyframes tracer { 0% { opacity: 1; } 100% { opacity: 0; } }
+.field .firing .muzzle path { animation: muzzle .25s ease-out; }
+@keyframes muzzle { 0% { opacity: 1; transform: scale(1.3); } 100% { opacity: 0; transform: scale(.8); } }
+.row.picked { outline: 1px solid var(--hazard); border-radius: 6px; padding: 4px 6px; }

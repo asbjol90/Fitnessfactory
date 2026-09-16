@@ -3,11 +3,10 @@ import { store } from '../store';
 import { act, armed, bagChips, costChips, icon, liveSheet, longPress, sheet, stepper } from '../ui';
 import { buildingArt, raidArt, solarArt, traderArt, turretArt } from '../../art/nodes';
 import { go } from '../main';
-import { playRaid } from '../raidplay';
 import { belt, beltItems, emptyPad, environment, floorDefs, pad, stockRack } from '../../art/floor';
 import { isBuildingId, isTurretId, openBuildingInfo, openTurretInfo } from './info';
 import {
-  BUILDINGS, BUILDING_IDS, C, INFRA, RESOURCES, SOLAR_PANEL, TURRETS, TURRET_IDS, ZONES,
+  BUILDINGS, BUILDING_IDS, C, INFRA, RESOURCES, SOLAR_PANEL, TURRETS, TURRET_COMBAT, TURRET_IDS, ZONES,
   activeDrain, activeRecipes, beltCapacity, beltUpgradeCost, buildingBlocker, buildingLabel, dailyEnergyBalance, factorySize, freshRaid, hasTech, haulingLabor, nextFactorySize,
   slotIsWall, solarCap, staleConveyors, timesAffordable, workshopUnlocked,
   type BuildingInst, type Conveyor, type NodeRef, type RaidRecord, type ResourceId, type ResourceTier, type State, type TurretInst,
@@ -15,8 +14,8 @@ import {
 
 type Mode = 'view' | 'arrange' | 'connect';
 const SEEN_KEY = 'fitnessfactory_seen_raid';
-const ui: { mode: Mode; sel: number | null; selNode: NodeRef | null; playedRaidAt: number; seenRaidAt: number } =
-  { mode: 'view', sel: null, selNode: null, playedRaidAt: 0, seenRaidAt: Number(localStorage.getItem(SEEN_KEY) ?? 0) };
+const ui: { mode: Mode; sel: number | null; selNode: NodeRef | null; seenRaidAt: number } =
+  { mode: 'view', sel: null, selNode: null, seenRaidAt: Number(localStorage.getItem(SEEN_KEY) ?? 0) };
 const markSeen = (at: number) => { ui.seenRaidAt = at; try { localStorage.setItem(SEEN_KEY, String(at)); } catch { /* ignore */ } };
 
 // Geometry (SVG units)
@@ -107,9 +106,11 @@ export function renderFactory(s: State): Node {
   if (s.solar) parts.push(`<text x="${W - PAD}" y="${roomTop + 46}" text-anchor="end" class="node-sub">roof +${s.solar * SOLAR_PANEL.energyPerDay}/day</text>`);
   const fr = freshRaid(s);
   const unseen = fr && fr.at !== ui.seenRaidAt;
-  const raidMode = fr ? (fr.repelled ? 'repelled' : 'breach') : 'quiet';
-  parts.push(`<g data-node="raid" class="${fr ? 'anim-pop' : ''}"><g transform="translate(${raidBox.x},${raidBox.y})">${raidArt(raidMode)}</g>` +
-    `<text x="${raidBox.x + BW / 2}" y="${raidBox.y + BH + 12}" text-anchor="middle" class="node-label" style="fill:${fr ? (fr.repelled ? 'var(--ok)' : 'var(--danger)') : 'var(--ink-dim)'}">${fr ? (fr.repelled ? 'Repelled' : 'Breach!') : 'Quiet'}</text><rect x="${raidBox.x}" y="${raidBox.y}" width="${BW}" height="${BH}" class="node-hit"/></g>`);
+  const pending = !!s.pendingRaid && !s.pendingRaid.fight.done;
+  const raidMode = pending ? 'breach' : fr ? (fr.outcome.repelled ? 'repelled' : 'breach') : 'quiet';
+  const raidLabel = pending ? 'At the gate!' : fr ? (fr.outcome.repelled ? 'Repelled' : 'Breached') : 'Quiet';
+  parts.push(`<g data-node="raid" class="${pending ? 'anim-shake' : fr ? 'anim-pop' : ''}"><g transform="translate(${raidBox.x},${raidBox.y})">${raidArt(raidMode)}</g>` +
+    `<text x="${raidBox.x + BW / 2}" y="${raidBox.y + BH + 12}" text-anchor="middle" class="node-label" style="fill:${pending ? 'var(--danger)' : fr ? (fr.outcome.repelled ? 'var(--ok)' : 'var(--danger)') : 'var(--ink-dim)'}">${raidLabel}</text><rect x="${raidBox.x}" y="${raidBox.y}" width="${BW}" height="${BH}" class="node-hit"/></g>`);
 
   // Belts (drawn under nodes → prepend)
   const stale = new Set(staleConveyors(s).map(c => c.id));
@@ -125,11 +126,6 @@ export function renderFactory(s: State): Node {
     if (!entry) return;
     if (entry.kind === 'building') openBuildingInfo(s.buildings[entry.iid]!.def); else openTurretInfo(s.turrets[entry.iid]!.def);
   });
-  if (fr && ui.playedRaidAt !== fr.at) {
-    ui.playedRaidAt = fr.at;
-    const turrets = nodes.filter(n => n.ref.kind === 'turret').map(n => ({ iid: (n.ref as { iid: string }).iid, slot: n.slot!, cx: n.x + BW / 2, cy: n.y + BH / 2 }));
-    setTimeout(() => playRaid(floor, fr, { turrets, raidBox: { cx: raidBox.x + BW / 2, top: raidBox.y + 8 }, lineY }), 250);
-  }
   const solarMax = solarCap(s);
 
   const eb = dailyEnergyBalance(s);
@@ -140,10 +136,11 @@ export function renderFactory(s: State): Node {
     modeBar(s),
     floor,
     hint(),
-    unseen && fr && h(`div.notice.${fr.repelled ? 'ok' : 'danger'}.stack`,
+    pending && h('div.notice.danger.row.between', h('span', h('b', 'Raiders at the gate.'), ' Loot runs are blocked until you defend.'), h('button.btn.sm', { onclick: () => go('defence') }, 'Defend')),
+    unseen && fr && !pending && h(`div.notice.${fr.outcome.repelled ? 'ok' : 'danger'}.stack`,
       h('p', 'Raiders followed your tracks back and assaulted your base while you were gone.'),
       h('p.small', raidLine(fr)),
-      h('div.seg.c2', h('button.btn.sm', { onclick: () => { ui.playedRaidAt = 0; store.refresh(); } }, 'Replay'), h('button.btn.sm', { onclick: () => { markSeen(fr.at); store.refresh(); } }, 'Got it'))),
+      h('button.btn.sm', { onclick: () => { markSeen(fr.at); store.refresh(); } }, 'Got it')),
     s.energy <= 0 && h('div.notice.danger', 'No Energy — the floor is dark. Log a flexibility session, or buy an emergency quota in Trade.'),
     h('div.card.row.between',
       h('div', h('div.small.dim', 'Energy per day'), h('div', h('b', { className: eb.net < 0 ? 'c-strength' : 'c-energy' }, `${eb.net > 0 ? '+' : ''}${eb.net}`), h('span.dim.small', `  (−${eb.drain} drain, +${eb.solar} solar)`))),
@@ -254,7 +251,7 @@ function onFloorTap(e: Event, s: State): void {
     openConnectSheet(s, from, ref);
     return;
   }
-  if (fixed === 'raid') { const fr = freshRaid(s); if (fr) markSeen(fr.at); openRaidHistory(); return; }
+  if (fixed === 'raid') { if (s.pendingRaid && !s.pendingRaid.fight.done) { go('defence'); return; } const fr = freshRaid(s); if (fr) markSeen(fr.at); openRaidHistory(); return; }
   if (fixed === 'stock') { openStockSheet(); return; }
   if (fixed === 'trader') { go('trade'); return; }
   if (slot === null) return;
@@ -279,7 +276,7 @@ function openBuildSheet(s: State, slot: number): void {
     wall ? TURRET_IDS.map(id => {
       const d = TURRETS[id];
       const card = h('div.card.flat.stack.pressable',
-        h('div.row.between', h('div', h('b', d.name), h('div.dim.small', `${d.shots} shots × ${d.damage} dmg · fires ${RESOURCES[d.ammo].name}`)),
+        h('div.row.between', h('div', h('b', d.name), h('div.dim.small', `range ${TURRET_COMBAT[id].range} · ${TURRET_COMBAT[id].damage} dmg × ${TURRET_COMBAT[id].rate}/tick · fires ${RESOURCES[d.ammo].name}`)),
           h('button.btn.sm', { onclick: () => { if (act({ type: 'build_turret', turret: id, slot })) close(); } }, 'Place')),
         costChips(s, d.cost));
       longPress(card, () => openTurretInfo(id));
@@ -359,7 +356,7 @@ function openTurretSheet(iid: string): void {
     const belts = s.conveyors.filter(c => touches(c, 'turret', iid));
     return h('div.stack',
       h('div.row', svg(`<svg width="96" height="64" viewBox="0 0 96 64">${turretArt(t.def)}</svg>`),
-        h('div', h('h2', d.name), h('div.dim.small', `${d.shots} shots × ${d.damage} damage per raid · ${C.AMMO_PER_SHOT} ammo per shot`))),
+        h('div', h('h2', d.name), h('div.dim.small', `${d.blurb} Place it on the Defence tab.`))),
       h('div', h('div.row.between.small', h('span', 'Ammo'), h('span', `${t.ammo} / ${C.AMMO_CAP} ${RESOURCES[d.ammo].name}`)), h('div.bar', h('i', { style: { width: `${t.ammo / C.AMMO_CAP * 100}%` } }))),
       h('button.btn.primary.block', { onclick: () => act({ type: 'load_ammo', iid }) }, `Load ${C.AMMO_LOAD_AMOUNT} ${RESOURCES[d.ammo].name} (have ${s.res[d.ammo]})`),
       belts.length > 0 && h('div.stack', h('h3', 'Belts'), belts.map(c => beltRow(s, c))),
@@ -433,20 +430,21 @@ function openRaidHistory(): void {
   const s = store.state;
   sheet(() => h('div.stack', h('h2', 'Raid log'),
     s.raidHistory.length === 0 ? h('div.empty', 'No raids yet. The first 5 successful loot runs are always safe.') :
-      s.raidHistory.map(r => h(`div.card.flat.stack`, { style: { borderColor: r.repelled ? 'var(--ok)' : 'var(--danger)' } },
-        h('div.row.between', h('b', r.repelled ? 'Repelled' : 'Breach'), h('span.dim.small', new Date(r.at).toLocaleDateString())),
-        h('p.small', raidLine(r)),
-        r.shots.length > 0 && h('p.dim.small', r.shots.map(x => `${TURRETS[x.def].name} ×${x.shots} (${x.damage})`).join(' · '))))));
+      s.raidHistory.map(r => h(`div.card.flat.stack`, { style: { borderColor: r.outcome.repelled ? 'var(--ok)' : 'var(--danger)' } },
+        h('div.row.between', h('b', r.outcome.repelled ? 'Repelled' : 'Breached'), h('span.dim.small', new Date(r.at).toLocaleDateString())),
+        h('p.small', raidLine(r))))));
 }
 
 function raidLine(r: RaidRecord): string {
   const zone = ZONES.find(z => z.tier === r.zoneTier)?.name ?? `tier ${r.zoneTier}`;
-  const base = `${r.raiders} raiders × ${r.hpEach} HP from ${zone}. Your turrets dealt ${r.damageDealt} of ${r.totalHp} in ${r.ticksUsed} ticks.`;
-  if (r.repelled) return base;
-  const loss = r.loss?.kind === 'steal' ? `They took ${r.loss.amount} ${RESOURCES[r.loss.resource].name}.`
-    : r.loss?.kind === 'turret' ? `They wrecked your ${TURRETS[r.loss.def].name}.`
-    : r.loss?.kind === 'building' ? `They wrecked your ${BUILDINGS[r.loss.def].name}.` : 'Nothing worth taking.';
-  return `${base} ${loss}`;
+  const crew = r.wave.map(w => `${w.count} ${w.type}${w.count > 1 ? 's' : ''}`).join(', ');
+  const o = r.outcome;
+  const base = `${crew} from ${zone}. ${o.killed} killed in ${o.ticks} ticks.`;
+  if (o.repelled) { const d = Object.entries(o.drops).map(([id, n]) => `${n} ${RESOURCES[id as ResourceId].name}`).join(', '); return `${base}${d ? ` They dropped ${d}.` : ''}`; }
+  const loss = o.loss?.kind === 'steal' ? `They took ${o.loss.amount} ${RESOURCES[o.loss.resource].name}.`
+    : o.loss?.kind === 'turret' ? `They wrecked your ${TURRETS[o.loss.def].name}.`
+    : o.loss?.kind === 'building' ? `They wrecked your ${BUILDINGS[o.loss.def].name}.` : 'Nothing worth taking.';
+  return `${base} ${o.breached} got through. ${loss}`;
 }
 
 const touches = (c: Conveyor, kind: string, iid: string) =>

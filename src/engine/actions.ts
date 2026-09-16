@@ -26,6 +26,12 @@ export type Action =
   | { type: 'buy_contract_slot' }
   | { type: 'craft_gear'; stat: StatId }
   | { type: 'emergency_energy' }
+  | { type: 'upgrade_wall' }
+  | { type: 'place_turret'; iid: string; cell: number }
+  | { type: 'unplace_turret'; iid: string }
+  | { type: 'build_barricade'; cell: number }
+  | { type: 'remove_barricade'; cell: number }
+  | { type: 'raid_tick'; rally: boolean }
   | { type: 'tick' };
 
 /** Everything the UI might want to animate or toast. */
@@ -35,7 +41,11 @@ export type GameEvent =
   | { type: 'gain'; pool: 'labor' | 'energy' | 'research' | 'gold'; amount: number }
   | { type: 'loot'; zone: string; outcome: 'success' | 'salvage' | 'failed'; yield: Bag; premium: ResourceId | null; steel: boolean; pity: boolean; research: number; gearDrop: StatId | null }
   | { type: 'raid_teaser' }
+  | { type: 'raid_pending' }
   | { type: 'raid'; record: RaidRecord }
+  | { type: 'wall'; tier: number }
+  | { type: 'barricade'; op: 'built' | 'removed'; cell: number }
+  | { type: 'turret_placed'; iid: string; cell: number | null }
   | { type: 'level_up'; stat: StatId; level: number }
   | { type: 'built'; building: BuildingId; iid: string; slot: number }
   | { type: 'upgraded'; building: BuildingId; upgrade: string }

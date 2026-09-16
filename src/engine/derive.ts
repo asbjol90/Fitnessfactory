@@ -127,7 +127,9 @@ export const solarCap = (s: State) => C.SOLAR_CAP[s.factorySize - 1] ?? 1;
 export const freeSlots = (s: State, wall: boolean) =>
   s.slots.map((e, i) => (e === null && slotIsWall(s, i) === wall ? i : -1)).filter(i => i >= 0);
 
-export const turretOutput = (def: keyof typeof TURRETS) => TURRETS[def].shots * TURRETS[def].damage;
+import { TURRET_COMBAT } from './data/defence';
+/** Damage per tick while a target is in range and ammo lasts. */
+export const turretOutput = (def: keyof typeof TURRETS) => TURRET_COMBAT[def].damage * TURRET_COMBAT[def].rate;
 
 // ---------------------------------------------------------------- Session preview
 import type { Intensity, SessionKind } from './state';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BUILDINGS, C, RAID_WAVES, TURRETS, TURRET_IDS, contractProgress, dailyEnergyBalance, effectiveLevel,
-  initialState, naturalLevel, reduce, seededRng, turretOutput, upgradeSave, type Action, type State, type Rng,
+  BUILDINGS, C, TURRET_IDS, WALLS, cellIndex, contractProgress, dailyEnergyBalance, effectiveLevel,
+  initialState, naturalLevel, pathOf, placeable, reduce, seededRng, upgradeSave, type Action, type State, type Rng,
 } from '../index';
 
 const T0 = new Date('2026-09-15T10:00:00').getTime();
@@ -24,65 +24,89 @@ function run(s: State, rng: Rng, actions: Action[], now = T0): State {
 const give = (s: State, patch: Partial<Pick<State, 'gold' | 'labor' | 'energy' | 'research'>>, res: Partial<State['res']> = {}): State =>
   ({ ...s, ...patch, res: { ...s.res, ...res } });
 
-describe('raid wave table', () => {
-  it('3 of the previous turret tier clears a zone tier, 2 falls short', () => {
-    for (let tier = 2; tier <= 5; tier++) {
-      const wave = RAID_WAVES[tier - 1]!;
-      const prev = TURRET_IDS[tier - 2]!;
-      const out = turretOutput(prev);
-      expect(3 * out).toBeGreaterThanOrEqual(wave.raiders * wave.hp);
-      expect(2 * out).toBeLessThan(wave.raiders * wave.hp);
-    }
-  });
-  it('no turret exceeds the 10-tick ceiling', () => {
-    for (const id of TURRET_IDS) expect(TURRETS[id].shots).toBeLessThanOrEqual(C.RAID_APPROACH_TICKS);
-  });
-});
+/** Fight a pending raid to the end with a fixed rally policy. */
+function fightOut(s: State, rng: Rng, rallyEveryTick = false): State {
+  let guard = 0;
+  while (s.pendingRaid && !s.pendingRaid.fight.done && guard++ < 200) {
+    const r = reduce(s, { type: 'raid_tick', rally: rallyEveryTick }, { now: T0, rng });
+    if (r.error) throw new Error(r.error);
+    s = r.state;
+  }
+  return s;
+}
+/** Force a pending raid at the current zone tier. */
+function forceRaid(s: State, rng: Rng, seed = 11): State {
+  s = { ...s, lootRunsCompleted: 20, maxZoneTierReached: Math.max(1, s.maxZoneTierReached) };
+  let out = s;
+  for (let i = 0; i < 200 && !out.pendingRaid; i++) {
+    const r = reduce(out, { type: 'log_session', kind: 'cardio', minutes: 20, intensity: 'medium', zone: 'outskirts' }, { now: T0 + i * 1000, rng });
+    out = r.state;
+  }
+  if (!out.pendingRaid) throw new Error('no raid');
+  void seed;
+  return out;
+}
 
-describe('raids', () => {
-  it('never fires during the grace runs, then reveals via factory not log', () => {
+describe('raids (tower defence)', () => {
+  it('never fires during the grace runs', () => {
     let { s, rng } = fresh(7);
-    s = give(s, { labor: 999 });
-    let sawRaid = false;
     for (let i = 0; i < C.RAID_GRACE_RUNS; i++) {
       const r = reduce(s, { type: 'log_session', kind: 'cardio', minutes: 30, intensity: 'medium', zone: 'outskirts' }, { now: T0 + i * 1000, rng });
-      expect(r.events.some(e => e.type === 'raid')).toBe(false);
+      expect(r.state.pendingRaid).toBeNull();
       s = r.state;
     }
-    // Force many runs; with seed 7 a raid appears well within 60 runs at 20%.
-    for (let i = 0; i < 60 && !sawRaid; i++) {
-      const r = reduce(s, { type: 'log_session', kind: 'cardio', minutes: 30, intensity: 'medium', zone: 'outskirts' }, { now: T0 + (10 + i) * 1000, rng });
-      s = r.state;
-      if (r.events.some(e => e.type === 'raid')) {
-        sawRaid = true;
-        expect(r.events.some(e => e.type === 'raid_teaser')).toBe(true);
-        expect(s.raidHistory[0]!.runIndex).toBe(s.lootRunsCompleted);
-      }
-    }
-    expect(sawRaid).toBe(true);
   });
-
-  it('a loaded turret spends 2 ammo per shot and repels a tier-1 wave', () => {
+  it('a pending raid blocks loot runs until fought; no turrets means a breach', () => {
     let { s, rng } = fresh(3);
-    s = give(s, { labor: 999 }, { iron_ore: 100 });
-    s = run(s, rng, [{ type: 'build_turret', turret: 'scrap_launcher' }]);
-    const iid = Object.keys(s.turrets)[0]!;
-    s = run(s, rng, [{ type: 'load_ammo', iid }]);
-    expect(s.turrets[iid]!.ammo).toBe(C.AMMO_LOAD_AMOUNT);
-    s = { ...s, lootRunsCompleted: 6, maxZoneTierReached: 1 };
-    let raided = false;
-    for (let i = 0; i < 80 && !raided; i++) {
-      const r = reduce(s, { type: 'log_session', kind: 'cardio', minutes: 20, intensity: 'medium', zone: 'outskirts' }, { now: T0 + i * 1000, rng });
-      s = r.state;
-      const ev = r.events.find(e => e.type === 'raid');
-      if (ev && ev.type === 'raid') {
-        raided = true;
-        expect(ev.record.repelled).toBe(true);
-        expect(ev.record.shots[0]!.shots).toBe(1); // 4 dmg vs 4 hp → one shot
-        expect(s.turrets[iid]!.ammo).toBe(C.AMMO_LOAD_AMOUNT - C.AMMO_PER_SHOT);
-      }
-    }
-    expect(raided).toBe(true);
+    s = forceRaid(s, rng);
+    const blocked = reduce(s, { type: 'log_session', kind: 'cardio', minutes: 30, intensity: 'medium', zone: 'outskirts' }, { now: T0, rng });
+    expect(blocked.error).toMatch(/Defend/);
+    s = { ...s, res: { ...s.res, iron_ore: 40 } };
+    s = fightOut(s, rng);
+    expect(s.pendingRaid?.fight.done?.repelled).toBe(false);
+    expect(s.raidHistory[0]!.outcome.loss?.kind).toBe('steal');
+    // Acknowledging the finished fight clears it; loot runs are open again.
+    s = reduce(s, { type: 'raid_tick', rally: false }, { now: T0, rng }).state;
+    expect(s.pendingRaid).toBeNull();
+    expect(reduce(s, { type: 'log_session', kind: 'cardio', minutes: 30, intensity: 'medium', zone: 'outskirts' }, { now: T0, rng }).error).toBeNull();
+  });
+  it('two placed, loaded scrap launchers hold the Outskirts', () => {
+    let { s, rng } = fresh(5);
+    s = give(s, { labor: 200 }, { iron_ore: 200 });
+    s = run(s, rng, [{ type: 'build_turret', turret: 'scrap_launcher' }, { type: 'build_turret', turret: 'scrap_launcher' }]);
+    const ids = Object.keys(s.turrets);
+    for (const iid of ids) s = run(s, rng, [{ type: 'load_ammo', iid }, { type: 'load_ammo', iid }, { type: 'load_ammo', iid }]);
+    const road = pathOf(s);
+    const beside = (r: number) => cellIndex({ c: road[r]!.c + 1, r: road[r]!.r });
+    s = run(s, rng, [{ type: 'place_turret', iid: ids[0]!, cell: beside(1) }, { type: 'place_turret', iid: ids[1]!, cell: beside(3) }]);
+    s = forceRaid(s, rng);
+    s = fightOut(s, rng);
+    expect(s.pendingRaid?.fight.done?.repelled).toBe(true);
+    expect(s.raidHistory[0]!.outcome.killed).toBe(4);
+    expect(Object.values(s.turrets).some(t => t.ammo < 30)).toBe(true);
+  });
+  it('rally spends Labor and only near the gate; the fight is deterministic per seed', () => {
+    let { s, rng } = fresh(9);
+    s = give(s, { labor: 100 });
+    s = forceRaid(s, rng);
+    const a = fightOut(s, seededRng(1), true);
+    const b = fightOut(s, seededRng(2), true);
+    expect(a.labor).toBeLessThan(100);
+    expect(a.pendingRaid?.fight.done).toEqual(b.pendingRaid?.fight.done);
+  });
+  it('wall upgrades change the road, cap barricades, and give the gate HP', () => {
+    let { s, rng } = fresh();
+    s = give(s, { labor: 100, gold: 500 }, { stone: 100, gravel: 100, iron: 100, precision_components: 5 });
+    expect(pathOf(s)).toHaveLength(6);
+    s = run(s, rng, [{ type: 'build_barricade', cell: cellIndex(pathOf(s)[1]!) }]);
+    expect(reduce(s, { type: 'build_barricade', cell: cellIndex(pathOf(s)[2]!) }, { now: T0, rng }).error).toMatch(/supports 1/);
+    s = run(s, rng, [{ type: 'upgrade_wall' }]);
+    expect(s.wall).toBe(2);
+    expect(s.barricades).toHaveLength(0);
+    expect(pathOf(s).length).toBeGreaterThan(6);
+    expect(WALLS[1]!.hp).toBeGreaterThan(0);
+    const onRoad = cellIndex(pathOf(s)[2]!);
+    expect(placeable(s, onRoad)).toBe(false);
   });
 });
 
@@ -384,12 +408,13 @@ describe('round 1 mechanics', () => {
     (v2['turrets'] as Record<string, unknown>)['t9'] = { iid: 't9', def: 'assault_rifle', ammo: 6 };
     (v2['conveyors'] as unknown[]).push({ id: 'c9', resource: 'coke', amount: 5, from: { kind: 'stock' }, to: { kind: 'turret', iid: 't9' } });
     const up = upgradeSave(v2)!;
-    expect(up.version).toBe(4);
+    expect(up.version).toBe(5);
     expect(up.solar).toBe(1);
     expect(up.slots[0]).toBeNull();
     expect(up.buildings['b9']).toBeUndefined();
     expect(up.conveyors).toHaveLength(0);
     expect(up.turrets['t9']!.ammo).toBe(6);
+    expect(up.wall).toBe(1);
     expect(up.res.cartridges).toBe(0);
   });
 });

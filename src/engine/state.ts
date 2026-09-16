@@ -3,7 +3,7 @@ import { HABIT_IDS, RESOURCE_IDS, STAT_IDS } from './data/core';
 import { C } from './constants';
 import type { BuildingId, InfraId, TurretId } from './data/factory';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 export const SAVE_KEY = 'fitnessfactory_state_v2';
 export const V1_SAVE_KEY = 'fitnessfactory_state_v1';
 
@@ -34,20 +34,9 @@ export interface Session {
 }
 
 // ---------------------------------------------------------------- Raids
-export interface RaidRecord {
-  at: number;
-  runIndex: number;              // state.lootRunsCompleted when it fired
-  zoneTier: number;
-  raiders: number; hpEach: number; totalHp: number;
-  damageDealt: number;
-  ticksUsed: number;
-  repelled: boolean;
-  shots: Array<{ turretIid: string; def: TurretId; shots: number; damage: number }>;
-  loss: null
-    | { kind: 'steal'; resource: ResourceId; amount: number }
-    | { kind: 'turret'; def: TurretId }
-    | { kind: 'building'; def: BuildingId };
-}
+import type { PendingRaid, RaidRecordV2 } from './defence';
+export type RaidRecord = RaidRecordV2;
+export interface Barricade { cell: number; hp: number; }
 
 // ---------------------------------------------------------------- Contracts
 export interface ContractSlot { id: string; done: boolean; }
@@ -97,6 +86,11 @@ export interface State {
   runsSinceSteel: number;
   maxZoneTierReached: number;
   raidHistory: RaidRecord[];
+  /** Defence: wall tier, barricades on the road, where each turret stands, and the fight in progress. */
+  wall: 1 | 2 | 3;
+  barricades: Barricade[];
+  turretCells: Record<string, number>;
+  pendingRaid: PendingRaid | null;
 
   contracts: { slots: ContractSlot[]; completedTotal: number; bought: number };
   weekly: WeeklyCounters;
@@ -134,6 +128,7 @@ export function initialState(now: number): State {
     slots: Array.from({ length: 6 }, () => null),
     buildings: {}, turrets: {}, conveyors: [], nextId: 1,
     lootRunsCompleted: 0, runsSinceSteel: 0, maxZoneTierReached: 0, raidHistory: [],
+    wall: 1, barricades: [], turretCells: {}, pendingRaid: null,
     contracts: { slots: [], completedTotal: 0, bought: 0 },
     weekly: emptyWeekly(),
     emergencyUsesThisWeek: 0,

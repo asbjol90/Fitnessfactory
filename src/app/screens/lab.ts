@@ -40,7 +40,7 @@ function zones(s: State): Node {
         h('div', h('b', z.name, reached && h('span.c-gold', ' ★')), h('div.dim.small', `${z.lootMult}× loot · needs speed ${z.requiredSpeed}${z.tier >= 4 ? ' · rare gear drops' : ''}`)),
         h('span.small', { className: open ? 'c-energy' : 'c-strength' }, open ? 'Open' : `${z.requiredSpeed - lvl} short`));
     }),
-    h('div.card.stack', h('h3', 'Raids'), h('p.dim.small', `The first ${C.RAID_GRACE_RUNS} successful loot runs are safe. After that each run has a ${Math.round(C.RAID_CHANCE * 100)}% chance of a raid. A raid lasts ${C.RAID_APPROACH_TICKS} ticks; every loaded turret fires once per tick until its shots for the raid are spent.`),
+    h('div.card.stack', h('h3', 'Raids'), h('p.dim.small', `The first ${C.RAID_GRACE_RUNS} successful loot runs are safe. After that each run has a ${Math.round(C.RAID_CHANCE * 100)}% chance that raiders follow you home. They wait at the gate; you fight them on the Defence tab before your next run.`),
       h('p.dim.small', `Loot runs so far: ${s.lootRunsCompleted}. Raids: ${s.raidHistory.length}.`)));
 }
 

@@ -175,21 +175,16 @@ export const WORKSHOP_UNLOCK = { mainBuildings: 2, contracts: 3 };
 // ---------------------------------------------------------------- Turrets
 export type TurretId = 'scrap_launcher' | 'shotgun' | 'assault_rifle' | 'minigun' | 'double_minigun';
 export interface TurretDef {
-  id: TurretId; name: string; shots: number; damage: number; ammo: ResourceId; cost: Cost; tier: number;
+  id: TurretId; name: string; ammo: ResourceId; cost: Cost; tier: number; blurb: string;
 }
 export const TURRETS: Record<TurretId, TurretDef> = {
-  scrap_launcher: { id: 'scrap_launcher', name: 'Scrap Launcher', tier: 1, shots: 2, damage: 4, ammo: 'iron_ore', cost: cost({ iron_ore: 20 }, 0, 15) },
-  shotgun: { id: 'shotgun', name: 'Shotgun', tier: 2, shots: 2, damage: 8, ammo: 'iron', cost: cost({ iron: 15 }, 20) },
-  assault_rifle: { id: 'assault_rifle', name: 'Assault Rifle', tier: 3, shots: 8, damage: 5, ammo: 'cartridges', cost: cost({ coke: 15, iron: 10 }, 35) },
-  minigun: { id: 'minigun', name: 'Minigun', tier: 4, shots: 10, damage: 8, ammo: 'hardened_rounds', cost: cost({ precision_components: 5 }, 80) },   // 1.0 CHANGE: gold was 60
-  double_minigun: { id: 'double_minigun', name: 'Double Minigun', tier: 5, shots: 10, damage: 15, ammo: 'alloy_rounds', cost: cost({ reinforced_alloy: 3 }, 130) },   // 1.0 CHANGE: gold was 100
+  scrap_launcher: { id: 'scrap_launcher', name: 'Scrap Launcher', tier: 1, blurb: 'Lobs ore. Cheap chip damage near the entry.', ammo: 'iron_ore', cost: cost({ iron_ore: 20 }, 0, 15) },
+  shotgun: { id: 'shotgun', name: 'Shotgun', tier: 2, blurb: 'Brutal at point blank, useless further out.', ammo: 'iron', cost: cost({ iron: 15 }, 20) },
+  assault_rifle: { id: 'assault_rifle', name: 'Assault Rifle', tier: 3, blurb: 'Long reach, steady damage. Covers the whole approach.', ammo: 'cartridges', cost: cost({ coke: 15, iron: 10 }, 35) },
+  minigun: { id: 'minigun', name: 'Minigun', tier: 4, blurb: 'Two shots a tick. Eats ammo, melts groups.', ammo: 'hardened_rounds', cost: cost({ precision_components: 5 }, 80) },   // 1.0 CHANGE: gold was 60
+  double_minigun: { id: 'double_minigun', name: 'Double Minigun', tier: 5, blurb: 'The answer to the Ashen Reach.', ammo: 'alloy_rounds', cost: cost({ reinforced_alloy: 3 }, 130) },   // 1.0 CHANGE: gold was 100
 };
 export const TURRET_IDS = Object.keys(TURRETS) as TurretId[];
-
-/** Raid wave per zone tier (index = tier-1). */
-export const RAID_WAVES: Array<{ raiders: number; hp: number }> = [
-  { raiders: 2, hp: 2 }, { raiders: 3, hp: 6 }, { raiders: 5, hp: 8 }, { raiders: 10, hp: 10 }, { raiders: 10, hp: 20 },
-];
 
 /** Techs referenced by the factory for effects. */
 export const TECH_EFFECT: Record<'lootBonus' | 'laborBonus' | 'energyBonus' | 'sellBonus', Array<[TechId, number]>> = {

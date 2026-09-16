@@ -94,3 +94,15 @@ Everything else is 1:1 with the shipped v1 `index.html`.
 - Natural stat levels 3–5 take more volume (speed/energy 600 / 1400 / 3000 minutes; strength 450 / 1100 / 2400 Labor; research 200 / 500 / 1000).
 - Logging a session vibrates and floats the result over the button.
 - Save version 4.
+
+## Chunk B — raids as tower defence (Sept 2026)
+
+- A raid no longer resolves instantly. After a loot run it can leave raiders *at the gate*; loot runs are blocked until you fight them on the new **Defence** tab.
+- The field is a 7×6 grid outside the wall. The wall tier shapes the road: Palisade (straight), Stone Wall (one bend, gate 12 HP, 2 barricades), Reinforced Wall (switchback, gate 30 HP, 3 barricades). Upgrading clears barricades and anything standing on the new road.
+- Turrets are bought on the Factory wall and positioned on the field. Combat stats: range (cells, any direction), damage, shots per tick; every shot costs 2 ammo. Turrets fire at whoever is furthest along the road within range. Scrap Launcher 2/3×1, Shotgun 1/10×1, Assault Rifle 3/7×1, Minigun 2/5×2, Double Minigun 2/8×2.
+- Three raider types: Scrapper (1 cell/tick), Runner (2), Brute (½, hits gates and barricades for 3). Waves per zone tier are in `data/defence.ts`, tuned with `npm run defsim` so that 3 turrets of the previous tier hold a zone on a Palisade ~80–90% of the time and 2 of the current tier hold it outright.
+- Barricades: 8 Labor + 4 Stone, 15 HP, on the road at least two cells from the gate; raiders must break them.
+- Rally: during the fight, 12 Labor sends your workers to the gate for one tick (12 damage within 1 cell), 2-tick cooldown.
+- Repelled raids drop scrap (Iron Ore/Coal per kill) with a 10% roll for Hardened Steel, a premium, or in Hollow/Reach a gear tier. Breaches steal raw materials; three or more breachers can wreck a turret or building.
+- The fight is deterministic per raid seed and advances one tick per action, so it survives closing the app mid-fight.
+- Save version 5; old raid records are dropped.

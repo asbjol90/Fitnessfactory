@@ -8,11 +8,13 @@ import { renderFactory } from './screens/factory';
 import { renderAvatar } from './screens/avatar';
 import { renderTrade } from './screens/trade';
 import { renderLab, settingsSheet } from './screens/lab';
+import { renderDefence } from './screens/defence';
 
-type TabId = 'train' | 'factory' | 'avatar' | 'trade' | 'lab';
+type TabId = 'train' | 'factory' | 'defence' | 'avatar' | 'trade' | 'lab';
 const TABS: Array<{ id: TabId; label: string; path: string; render: (s: State) => Node }> = [
   { id: 'train', label: 'Train', path: 'M4 12h3l2-6 4 12 3-9 2 3h2', render: renderTrain },
   { id: 'factory', label: 'Factory', path: 'M3 20V10l5 3V10l5 3V10l5 3v7H3zM7 10V6h3v4', render: renderFactory },
+  { id: 'defence', label: 'Defence', path: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3zM9 12l2 2 4-4', render: renderDefence },
   { id: 'avatar', label: 'Avatar', path: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 9a7 7 0 0 1 14 0', render: renderAvatar },
   { id: 'trade', label: 'Trade', path: 'M3 9l2-4h14l2 4M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0V9zm2 5v6h14v-6', render: renderTrade },
   { id: 'lab', label: 'Lab', path: 'M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3', render: renderLab },
@@ -64,6 +66,9 @@ function render(s: State) {
   const factoryTab = document.getElementById('tab-factory')!;
   factoryTab.querySelector('.badge')?.remove();
   if (factoryAttention && current !== 'factory') factoryTab.append(h('span.badge'));
+  const defTab = document.getElementById('tab-defence')!;
+  defTab.querySelector('.badge')?.remove();
+  if (s.pendingRaid && !s.pendingRaid.fight.done && current !== 'defence') defTab.append(h('span.badge'));
   const screen = TABS.find(t => t.id === current)!;
   main.replaceChildren(screen.render(s));
 }
@@ -78,7 +83,8 @@ function handleEvents(s: State, events: GameEvent[]) {
       case 'contract_done': gold += e.reward; toast(`Contract delivered: +${e.reward} Gold`, 'gold'); break;
       case 'level_up': toast(`${cap(e.stat)} reached level ${e.level}!`, 'gold', 4000); break;
       case 'gear': toast(`Gear tier ${e.tier} equipped`, 'gold', 3500); break;
-      case 'raid_teaser': factoryAttention = true; toast('Something happened back at the base. Check the Factory.', 'danger', 5000); break;
+      case 'raid_teaser': toast('Raiders followed your tracks back. They are at the gate — Defence tab.', 'danger', 5000); break;
+      case 'raid': factoryAttention = true; break;
       case 'week': toast('New week: fresh contracts.', 'plain', 3000); break;
       case 'day': if (e.days && e.energyAfter < e.energyBefore) energy += e.energyAfter - e.energyBefore; break;
       case 'demolished': gold += e.refund; break;

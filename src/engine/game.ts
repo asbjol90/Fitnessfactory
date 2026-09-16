@@ -14,7 +14,9 @@ import {
 } from './derive';
 import { GameError } from './errors';
 import { runRecipe } from './production';
-import { removeNode, resolveRaid, shouldRaid } from './raids';
+import { removeNode, shouldRaid } from './raids';
+import { barricadeable, createRaid, placeable, tickRaid } from './defence';
+import { BARRICADE, wallDef } from './data/defence';
 import { addBag, clone, dayKey, emptyHabitCounts, hasBag, pick, subBag, weightedPick, type Rng, type Session, type State } from './state';
 import { advanceTime } from './tick';
 
@@ -85,6 +87,45 @@ function apply(s: State, a: Action, ctx: Ctx, ev: GameEvent[]): void {
     case 'buy_contract_slot': return buyContractSlot(s, ctx, ev);
     case 'craft_gear': return craftGear(s, a.stat, ev);
     case 'emergency_energy': return emergencyEnergy(s, ev);
+    case 'upgrade_wall': return upgradeWall(s, ev);
+    case 'place_turret': {
+      if (!s.turrets[a.iid]) throw new GameError('That turret is gone.');
+      if (s.pendingRaid && !s.pendingRaid.fight.done && s.pendingRaid.fight.tick > 0) throw new GameError('Not while the fight is on.');
+      delete s.turretCells[a.iid];
+      if (!placeable(s, a.cell)) throw new GameError('Turrets stand beside the road, not on it.');
+      s.turretCells[a.iid] = a.cell;
+      ev.push({ type: 'turret_placed', iid: a.iid, cell: a.cell });
+      return;
+    }
+    case 'unplace_turret': {
+      if (s.pendingRaid && !s.pendingRaid.fight.done && s.pendingRaid.fight.tick > 0) throw new GameError('Not while the fight is on.');
+      delete s.turretCells[a.iid];
+      ev.push({ type: 'turret_placed', iid: a.iid, cell: null });
+      return;
+    }
+    case 'build_barricade': {
+      if (s.pendingRaid && !s.pendingRaid.fight.done && s.pendingRaid.fight.tick > 0) throw new GameError('Not while the fight is on.');
+      if (s.barricades.length >= wallDef(s.wall).barricades) throw new GameError(`Your wall supports ${wallDef(s.wall).barricades} barricade${wallDef(s.wall).barricades > 1 ? 's' : ''}.`);
+      if (!barricadeable(s, a.cell)) throw new GameError('Barricades go on the road, at least two steps from the gate.');
+      if (s.labor < BARRICADE.labor) throw new GameError(`Needs ${BARRICADE.labor} Labor.`);
+      if (!hasBag(s.res, BARRICADE.cost)) throw new GameError('Needs 4 Stone.');
+      subBag(s.res, BARRICADE.cost); s.labor -= BARRICADE.labor; s.avatar.volume.strength += BARRICADE.labor;
+      s.barricades.push({ cell: a.cell, hp: BARRICADE.hp });
+      ev.push({ type: 'barricade', op: 'built', cell: a.cell });
+      return;
+    }
+    case 'remove_barricade': {
+      s.barricades = s.barricades.filter(b => b.cell !== a.cell);
+      ev.push({ type: 'barricade', op: 'removed', cell: a.cell });
+      return;
+    }
+    case 'raid_tick': {
+      if (!s.pendingRaid) throw new GameError('No raid to fight.');
+      if (s.pendingRaid.fight.done) { s.pendingRaid = null; return; }
+      tickRaid(s, a.rally);
+      if (s.pendingRaid.fight.done) ev.push({ type: 'raid', record: s.raidHistory[0]! });
+      return;
+    }
   }
 }
 
@@ -173,6 +214,7 @@ function logSession(s: State, a: Extract<Action, { type: 'log_session' }>, ctx: 
     }
     case 'cardio': {
       if (!a.zone) throw new GameError('Choose a zone to loot.');
+      if (s.pendingRaid && !s.pendingRaid.fight.done) throw new GameError('Raiders are at your gate. Defend the factory before the next run.');
       const r = cardioRun(s, counted, im, a.zone, ctx, ev);
       session.result = r.text;
       if (r.failed) session.failed = true;
@@ -290,10 +332,10 @@ function cardioRun(s: State, minutes: number, im: number, zoneId: string, ctx: C
   let text = `${zone.name}: ${parts.filter(Boolean).join(', ')}`;
 
   if (shouldRaid(s, ctx.rng)) {
-    const record = resolveRaid(s, ctx.now, ctx.rng);
+    s.pendingRaid = createRaid(s, Math.floor(ctx.rng() * 2 ** 31), ctx.now);
     ev.push({ type: 'raid_teaser' });
-    ev.push({ type: 'raid', record });
-    text += ' — something happened back at the base. Check the Factory.';
+    ev.push({ type: 'raid_pending' });
+    text += ' — raiders followed your tracks. They are at the gate.';
   }
   return { text, failed: false };
 }
@@ -466,6 +508,18 @@ function buildSolar(s: State, ev: GameEvent[]): void {
   payCost(s, SOLAR_PANEL.cost);
   s.solar++;
   ev.push({ type: 'solar', count: s.solar });
+}
+
+function upgradeWall(s: State, ev: GameEvent[]): void {
+  if (s.wall >= 3) throw new GameError('The wall is as strong as it gets.');
+  if (s.pendingRaid && !s.pendingRaid.fight.done) throw new GameError('Not with raiders at the gate.');
+  const next = wallDef(s.wall + 1);
+  payCost(s, { res: next.cost, gold: next.gold, labor: 0, research: 0 });
+  s.wall = next.tier;
+  // The road changes shape: anything now standing on it steps off, barricades are cleared.
+  for (const [iid, cell] of Object.entries(s.turretCells)) if (!placeable({ ...s, turretCells: {} }, cell)) delete s.turretCells[iid];
+  s.barricades = [];
+  ev.push({ type: 'wall', tier: s.wall });
 }
 
 function upgradeFactory(s: State, ev: GameEvent[]): void {

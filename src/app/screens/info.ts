@@ -2,7 +2,7 @@ import { h, svg } from '../dom';
 import { sheet, bagChips, icon } from '../ui';
 import { buildingArt, turretArt } from '../../art/nodes';
 import {
-  BUILDINGS, BUILDING_IDS, C, RESOURCES, TURRETS, TURRET_IDS, WORKSHOP_UNLOCK, ZONES, RAID_WAVES,
+  BUILDINGS, BUILDING_IDS, C, RESOURCES, TURRETS, TURRET_COMBAT, TURRET_IDS, WORKSHOP_UNLOCK, WAVES, ZONES,
   type BuildingId, type ResourceId, type TurretId,
 } from '../../engine';
 
@@ -56,17 +56,16 @@ export function openBuildingInfo(id: BuildingId): void {
 
 export function openTurretInfo(id: TurretId): void {
   const d = TURRETS[id];
-  const per = d.shots * d.damage;
-  const clears = RAID_WAVES.map((w, i) => ({ zone: ZONES[i]!.name, n: Math.ceil((w.raiders * w.hp) / per) }));
+  const cs = TURRET_COMBAT[id];
   sheet(() => h('div.stack',
     h('div.row', svg(`<svg width="96" height="64" viewBox="0 0 96 64">${turretArt(id)}</svg>`),
-      h('div', h('h2', d.name), h('div.dim.small', `Tier ${d.tier} · wall slot`))),
+      h('div', h('h2', d.name), h('div.dim.small', `Tier ${d.tier} · ${d.blurb}`))),
     h('div.card.flat.stack', h('h3', 'In a raid'),
-      h('p.small', `Fires up to ${d.shots} shots, ${d.damage} damage each — ${per} total if fully loaded. One shot per tick, raids last ${C.RAID_APPROACH_TICKS} ticks.`),
+      h('p.small', `Range ${cs.range} cell${cs.range > 1 ? 's' : ''} (any direction). ${cs.damage} damage, ${cs.rate} shot${cs.rate > 1 ? 's' : ''} per tick while a raider is in range. Targets whoever is furthest along the road.`),
       h('p.small', 'Ammo: ', icon(d.ammo, 14), ` ${RESOURCES[d.ammo].name}, ${C.AMMO_PER_SHOT} per shot. Made by: ${producersOf(d.ammo).join(', ')}.`)),
-    h('div.card.flat.stack', h('h3', 'How many to hold a zone'),
-      clears.map(c => h('div.row.between.small', h('span', c.zone), h('b', `${c.n}`)))),
-    h('div.card.flat.stack', h('h3', 'To place'), bagChips(d.cost.res), h('div.dim.small', `${d.cost.gold ? `${d.cost.gold} Gold. ` : ''}${d.cost.labor ? `${d.cost.labor} Labor.` : ''}`)),
+    h('div.card.flat.stack', h('h3', 'Crews it will face'),
+      WAVES.map(w => h('div.row.between.small', h('span', ZONES[w.tier - 1]!.name), h('span.dim', w.groups.map(g => `${g.count}×${g.hp}hp`).join(' + '))))),
+    h('div.card.flat.stack', h('h3', 'To place'), bagChips(d.cost.res), h('div.dim.small', `${d.cost.gold ? `${d.cost.gold} Gold. ` : ''}${d.cost.labor ? `${d.cost.labor} Labor.` : ''} Buy on the Factory wall, position on the Defence field.`)),
     h('p.dim.small', 'Load ammo by hand or with a belt. An empty turret does nothing.'),
   ));
 }
