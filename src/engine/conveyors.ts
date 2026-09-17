@@ -12,7 +12,7 @@ export function validateConveyor(s: State, from: NodeRef, to: NodeRef, resource:
   if (sameNode(from, to)) throw new GameError('A belt needs two different ends.');
   if (from.kind === 'trader') throw new GameError('The Trader only receives goods.');
   if (from.kind === 'turret') throw new GameError('Turrets only receive ammo.');
-  if (to.kind === 'stock') throw new GameError('Belts run out of the stockpile, not into it.');
+  if (to.kind === 'stock' && from.kind !== 'building') throw new GameError('Only a machine can send goods back to the Stockpile.');
   if (from.kind === 'building') {
     const b = s.buildings[from.iid];
     if (!b) throw new GameError('That building is gone.');

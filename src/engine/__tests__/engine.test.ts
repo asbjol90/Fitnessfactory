@@ -336,6 +336,11 @@ describe('time', () => {
     s = run(s, rng, [{ type: 'add_conveyor', from: { kind: 'stock' }, to: { kind: 'building', iid }, resource: 'iron_ore' }]);
     const b = run(s, rng, [{ type: 'produce', iid, recipe: 'smelt', units: 4 }]);
     expect(b.labor).toBe(80 - 13);
+    // Return belt for the iron: no hauling at all
+    s = run(s, rng, [{ type: 'add_conveyor', from: { kind: 'building', iid }, to: { kind: 'stock' }, resource: 'iron' }]);
+    const c = run(s, rng, [{ type: 'produce', iid, recipe: 'smelt', units: 4 }]);
+    expect(c.labor).toBe(80 - 12);
+    expect(reduce(s, { type: 'add_conveyor', from: { kind: 'stock' }, to: { kind: 'stock' }, resource: 'iron' }, { now: T0, rng }).error).toBeTruthy();
   });
 });
 

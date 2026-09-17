@@ -171,7 +171,7 @@ export const beltUpgradeCost = (c: Conveyor): { res: Bag; gold: number } | null 
 /** Is `resource` delivered INTO building `iid` by a belt? */
 export const hasInputBelt = (s: State, iid: string, resource: ResourceId) =>
   s.conveyors.some(c => c.to.kind === 'building' && c.to.iid === iid && c.resource === resource);
-/** Is `resource` carried OUT of building `iid` by a belt? */
+/** Is `resource` carried OUT of building `iid` by a belt (to another machine, the Trader, or back to the Stockpile)? */
 export const hasOutputBelt = (s: State, iid: string, resource: ResourceId) =>
   s.conveyors.some(c => c.from.kind === 'building' && c.from.iid === iid && c.resource === resource);
 /** Hauling Labor for running `recipe` `units` times on `iid`: unbelted inputs and outputs cost 1 Labor per HAUL_UNITS_PER_LABOR units. */

@@ -43,7 +43,8 @@ function runConveyors(s: State, rng: Rng): Array<{ id: string; moved: number }> 
   for (const c of s.conveyors) {
     let moved = 0;
     const cap = beltCapacity(c);
-    if (c.to.kind === 'trader') {
+    if (c.to.kind === 'stock') { moved = 0; /* return belt: nothing to move, output already lands in stock; it only removes hauling */ }
+    else if (c.to.kind === 'trader') {
       const units = Math.min(cap, s.res[c.resource]);
       const laborEach = sellLaborCost(s);
       const affordable = laborEach > 0 ? Math.min(units, Math.floor(s.labor / laborEach)) : units;

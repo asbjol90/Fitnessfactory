@@ -133,3 +133,4 @@ Everything else is 1:1 with the shipped v1 `index.html`.
 - Nutrition: balanced meal 2 Research (was 3), no junk 5 (was 4).
 - Connect mode stays on after laying a belt until toggled off. Belts leave the Stockpile from its side. "Sell all" closes the sheet.
 - `npm run lab` builds a single-file preview (`dist-lab/index.html`) seeded from `src/lab-seed.json`; not the deploy build.
+- Return belts: a machine can belt its output back to the Stockpile; it moves nothing (outputs already land there) but removes output hauling for that resource. The recipe line names which resources are still hauled.

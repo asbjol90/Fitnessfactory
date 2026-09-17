@@ -184,6 +184,13 @@ function beltMarkup(c: Conveyor, nodes: Placed[], stale: boolean, idx: number, l
     // Shipping lane: down into the lane, west to the gutter, south past the wall, east into the Trader.
     const gutter = PAD / 2 + off / 2;
     pts.push([ax, a.y + ah], [ax, a.y + ah + LANE], [gutter, a.y + ah + LANE], [gutter, b.y + BH / 2 + off], [b.x, b.y + BH / 2 + off]);
+  } else if (c.to.kind === 'stock') {
+    // Return belt: up the source's column, then into the Stockpile's side at mid-height.
+    const left = ax < b.x + bw / 2;
+    const sy = b.y + (b.h ?? BH) / 2 + off;
+    const end: [number, number] = [left ? b.x : b.x + bw, sy];
+    if (a.y <= b.y + (b.h ?? BH) + GY + 1) pts.push([ax, a.y], [ax, sy], end);
+    else { const laneA = a.y - GY + LANE; const gutter = left ? PAD / 2 + off : W - PAD / 2 + off; pts.push([ax, a.y], [ax, laneA], [gutter, laneA], [gutter, sy], end); }
   } else if (c.from.kind === 'stock') {
     // Out of the Stockpile's side, along its mid-height, then down the target's column.
     const left = bx < a.x + aw / 2;
@@ -350,7 +357,12 @@ function recipeRow(s: State, b: BuildingInst, recipeId: string): Node {
   while (max > 0 && r.labor * max + haulingLabor(s, b.iid, r, max) > s.labor) max--;
   let n = Math.min(Math.max(1, max), 5);
   const out = h('span.dim.small');
-  const upd = () => { const haul = haulingLabor(s, b.iid, r, n); out.textContent = `→ ${bagText(r.output, n)} · costs ${r.labor * n + haul} Labor (${haul} hauling), ${r.energy * n} Energy`; };
+  const upd = () => {
+    const haul = haulingLabor(s, b.iid, r, n);
+    const unbelted = [...(Object.keys(r.inputs) as ResourceId[]).filter(id => !s.conveyors.some(c => c.to.kind === 'building' && c.to.iid === b.iid && c.resource === id)).map(id => `${RESOURCES[id].name} in`),
+      ...(Object.keys(r.output) as ResourceId[]).filter(id => !s.conveyors.some(c => c.from.kind === 'building' && c.from.iid === b.iid && c.resource === id)).map(id => `${RESOURCES[id].name} out`)];
+    out.textContent = `→ ${bagText(r.output, n)} · costs ${r.labor * n + haul} Labor (${haul} hauling${haul ? `: ${unbelted.join(', ')}` : ''}), ${r.energy * n} Energy`;
+  };
   upd();
   const outIds = Object.keys(r.output) as ResourceId[];
   const stockLine = h('div.row.wrap', { style: { gap: '6px' } }, h('span.dim.small', 'In stock:'), outIds.map(id => h('span.chip', icon(id, 14), `${s.res[id]} ${RESOURCES[id].name}`)));
@@ -392,6 +404,7 @@ function openConnectSheet(s: State, from: NodeRef, to: NodeRef): void {
   let supply: ResourceId[] = from.kind === 'stock' ? (Object.keys(RESOURCES) as ResourceId[]) : [];
   if (from.kind === 'building') { const b = s.buildings[from.iid]; supply = b ? activeRecipes(b).flatMap(r => Object.keys(r.output) as ResourceId[]) : []; }
   let accept: ResourceId[] = supply;
+  if (to.kind === 'stock' && from.kind !== 'building') accept = [];
   if (to.kind === 'building') { const b = s.buildings[to.iid]; accept = b ? activeRecipes(b).flatMap(r => Object.keys(r.inputs) as ResourceId[]) : []; }
   if (to.kind === 'turret') { const t = s.turrets[to.iid]; accept = t ? [TURRETS[t.def].ammo] : []; }
   const options = [...new Set(supply.filter(r => accept.includes(r)))];
@@ -401,7 +414,7 @@ function openConnectSheet(s: State, from: NodeRef, to: NodeRef): void {
     h('p.dim.small', `${nodeName(s, from)} → ${nodeName(s, to)}`),
     options.length === 0 ? h('div.empty', 'Nothing can travel between these two.') : h('div.stack',
       h('div.field', h('label', 'Carries'), h('div.seg.c2', options.map(r => h(`button.btn.sm${resource === r ? '.on' : ''}`, { onclick: (e: Event) => { resource = r; (e.currentTarget as HTMLElement).parentElement!.querySelectorAll('.btn').forEach(b => b.classList.remove('on')); (e.currentTarget as HTMLElement).classList.add('on'); } }, icon(r, 14), RESOURCES[r].name)))),
-      h('p.dim.small', `A new belt is tier 1: ${C.BELT_CAPACITY[0]} units a day. ${to.kind === 'trader' ? 'It sells them.' : to.kind === 'turret' ? 'It tops up ammo.' : 'It runs the recipe that often, as far as Labor, Energy and materials allow — and the machine no longer pays hauling for this resource.'} Upgrade it later from the machine's sheet.`),
+      h('p.dim.small', to.kind === 'stock' ? 'A return belt: the machine\'s output rides to the Stockpile instead of being carried, so it pays no hauling for it. Nothing else changes.' : `A new belt is tier 1: ${C.BELT_CAPACITY[0]} units a day. ${to.kind === 'trader' ? 'It sells them.' : to.kind === 'turret' ? 'It tops up ammo.' : 'It runs the recipe that often, as far as Labor, Energy and materials allow — and the machine no longer pays hauling for this resource.'} Upgrade it later from the machine's sheet.`),
       h('button.btn.primary.block', { onclick: () => { if (resource && act({ type: 'add_conveyor', from, to, resource })) close(); } }, 'Lay belt')),
   ));
 }
@@ -433,7 +446,7 @@ function openBeltSheet(id: string): void {
     const cost = beltUpgradeCost(c);
     return h('div.stack',
       h('div.row', icon(c.resource, 28), h('div', h('h2', `Belt · ${RESOURCES[c.resource].name}`), h('div.dim.small', `${nodeName(s, c.from)} → ${nodeName(s, c.to)} · Tier ${c.tier} · ${beltCapacity(c)} a day`))),
-      h('p.dim.small', c.to.kind === 'trader' ? 'Sells its load every day.' : c.to.kind === 'turret' ? 'Tops up ammo every day.' : 'Runs the recipe every day as far as Labor, Energy and materials allow, and the machine pays no hauling for this resource.'),
+      h('p.dim.small', c.to.kind === 'stock' ? 'Return belt: the output rides to the Stockpile, no hauling for it.' : c.to.kind === 'trader' ? 'Sells its load every day.' : c.to.kind === 'turret' ? 'Tops up ammo every day.' : 'Runs the recipe every day as far as Labor, Energy and materials allow, and the machine pays no hauling for this resource.'),
       cost ? h('div.card.flat.stack', h('div.row.between', h('b', `Upgrade to tier ${c.tier + 1} · ${(C.BELT_CAPACITY as readonly number[])[c.tier]} a day`), h('button.btn.sm', { onclick: () => act({ type: 'upgrade_conveyor', id }) }, 'Upgrade')), costChips(s, { res: cost.res, gold: cost.gold }))
         : h('p.c-gold', 'Top tier.'),
       armed('Remove belt', () => { if (act({ type: 'remove_conveyor', id })) close(); }));
