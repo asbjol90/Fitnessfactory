@@ -2,15 +2,16 @@ import { h, svg } from '../dom';
 import { store } from '../store';
 import { act, bagChips, costChips, icon, sheet, toast } from '../ui';
 import { floorDefs } from '../../art/floor';
-import { CELL, barricade as barricadeArt, fieldCell, gateCell, placeableMark, raiderTop, rangeMark, roadCell, turretTop, wallCell } from '../../art/defence';
+import { placeableMark, rangeMark } from '../../art/defence';
+import { CELL, barricadeTop as barricadeArt, fieldTile, gateTile, raiderTop, roadTile, turretTop, wallTile } from '../../art/defence2';
 import {
   BARRICADE, GATE, GRID_COLS, GRID_ROWS, RAIDERS, RALLY, RESOURCES, TURRETS, TURRET_COMBAT, WALLS, ZONES, C,
-  barricadeable, cellFromIndex, cellIndex, chebyshev, pathOf, placeable, waveDef, wallDef,
+  barricadeable, cellFromIndex, cellIndex, inRange, pathOf, placeable, waveDef, wallDef,
   type Fight, type Raider, type RaidOutcome, type State,
 } from '../../engine';
 import { openTurretInfo } from './info';
 
-type Mode = 'view' | 'place' | 'barricade';
+type Mode = 'view' | 'barricade';
 const ui: { mode: Mode; pick: string | null; timer: number | null; speed: 1 | 2; rallyArmed: boolean; angles: Record<string, number> } =
   { mode: 'view', pick: null, timer: null, speed: 1, rallyArmed: false, angles: {} };
 
@@ -28,15 +29,13 @@ export function renderDefence(s: State): Node {
 
   return h('div.stack',
     h('div.row.between', h('div', h('h2', 'Defence'), h('p.dim.small', `${wall.name} · ${Object.keys(s.turretCells).length}/${Object.keys(s.turrets).length} turrets on the field`)),
-      !pr && h('div.seg.c2', { style: { minWidth: '180px' } },
-        h(`button.btn.sm${ui.mode === 'place' ? '.on' : ''}`, { onclick: () => { ui.mode = ui.mode === 'place' ? 'view' : 'place'; ui.pick = null; store.refresh(); } }, 'Place'),
-        h(`button.btn.sm${ui.mode === 'barricade' ? '.on' : ''}`, { onclick: () => { ui.mode = ui.mode === 'barricade' ? 'view' : 'barricade'; ui.pick = null; store.refresh(); } }, 'Barricade'))),
+      !fighting && !fight?.done && h(`button.btn.sm${ui.mode === 'barricade' ? '.on' : ''}`, { onclick: () => { ui.mode = ui.mode === 'barricade' ? 'view' : 'barricade'; ui.pick = null; store.refresh(); } }, ui.mode === 'barricade' ? 'Done' : 'Barricades')),
     pr && !fight!.done && banner(s, fight!),
     field(s),
     fight?.done && result(s, fight.done),
     fighting && controls(s, fight!),
-    !pr && hint(s),
-    !pr && roster(s),
+    !fighting && !fight?.done && hint(s),
+    !fighting && !fight?.done && roster(s),
     wallCard(s, !!pr),
     !pr && wavePreview(s),
   );
@@ -77,23 +76,27 @@ function buildField(s: State): SVGSVGElement {
   const parts: string[] = [];
   const wallMax = wallDef(s.wall).hp;
 
+  const roadIdx = new Map(road.map((c, k) => [cellIndex(c), k]));
   for (let i = 0; i < GRID_COLS * GRID_ROWS; i++) {
     const { x, y } = cellXY(i);
     const c = cellFromIndex(i);
-    if (c.r === GATE.r) parts.push(i === cellIndex(GATE) ? gateCell(x, y, wallMax ? (f ? f.wallHp : wallMax) / wallMax : -1).replace('fill="var(--ok)"', 'fill="var(--ok)" id="gate-hp"') : wallCell(x, y));
-    else if (roadSet.has(i)) parts.push(roadCell(x, y));
-    else parts.push(fieldCell(x, y));
+    if (c.r === GATE.r) parts.push(i === cellIndex(GATE) ? gateTile(x, y, wallMax ? (f ? f.wallHp : wallMax) / wallMax : -1).replace('class="gate-hp"', 'id="gate-hp"') : wallTile(x, y));
+    else if (roadSet.has(i)) {
+      const k = roadIdx.get(i)!; const prev = road[k - 1], next = road[k + 1];
+      const dir = prev && next && prev.c !== next.c && prev.r !== next.r ? 'c' : (prev ?? next)!.c === road[k]!.c ? 'v' : 'h';
+      parts.push(roadTile(x, y, dir, i));
+    } else parts.push(fieldTile(x, y, i));
   }
   const entry = cellXY(cellIndex(road[0]!));
   parts.push(`<path d="M${entry.x + CELL / 2 - 8} ${entry.y + 6} l8 10 l8 -10" fill="none" stroke="var(--danger)" stroke-width="3"/>`);
 
-  if (!f && ui.mode === 'place') for (let i = 0; i < GRID_COLS * GRID_ROWS; i++) if (placeable(s, i)) { const { x, y } = cellXY(i); parts.push(placeableMark(x, y, !!ui.pick)); }
+  if (!f && ui.mode === 'view' && ui.pick) for (let i = 0; i < GRID_COLS * GRID_ROWS; i++) if (placeable(s, i)) { const { x, y } = cellXY(i); parts.push(placeableMark(x, y, true)); }
   if (!f && ui.mode === 'barricade') for (let i = 0; i < GRID_COLS * GRID_ROWS; i++) if (barricadeable(s, i)) { const { x, y } = cellXY(i); parts.push(placeableMark(x, y, true)); }
   const showRangeFor = ui.pick && s.turretCells[ui.pick] !== undefined ? ui.pick : null;
   if (showRangeFor) {
     const at = cellFromIndex(s.turretCells[showRangeFor]!);
     const r = TURRET_COMBAT[s.turrets[showRangeFor]!.def].range;
-    for (const rc of road) if (chebyshev(at, rc) <= r) { const { x, y } = cellXY(cellIndex(rc)); parts.push(rangeMark(x, y)); }
+    for (const rc of road) if (inRange(at, rc, r)) { const { x, y } = cellXY(cellIndex(rc)); parts.push(rangeMark(x, y)); }
   }
 
   parts.push('<g id="barricades">');
@@ -103,14 +106,16 @@ function buildField(s: State): SVGSVGElement {
     const t = s.turrets[iid]; if (!t) continue;
     const { x, y } = cellXY(cell);
     if (ui.angles[iid] === undefined) ui.angles[iid] = -90;
-    parts.push(`<g data-turret="${iid}">${turretTop(t.def, x, y, ui.angles[iid]!, false)}` +
+    const tstate = t.ammo < C.AMMO_PER_SHOT ? 'dry' : (f && f.tick > 0 && !f.done) ? 'track' : 'idle';
+    parts.push(`<g data-turret="${iid}">${ui.pick === iid ? `<circle cx="${x + CELL / 2}" cy="${y + CELL / 2}" r="24" fill="none" stroke="var(--hazard)" stroke-width="2"/>` : ''}${turretTop(t.def, x, y, ui.angles[iid]!, tstate).replace(`style="transform:rotate(${ui.angles[iid]}deg)"`, `style="--a:${ui.angles[iid]}deg;transform:rotate(${ui.angles[iid]}deg)"`)}` +
       `<text data-ammo="${iid}" x="${x + CELL / 2}" y="${y + CELL - 2}" text-anchor="middle" class="node-sub" style="font-size:9px">${t.ammo}</text></g>`);
   }
   parts.push('</g><g id="fx"></g><g id="raiders">');
   if (f) for (const r of f.raiders) {
     if (!r.alive || r.pos < 0) continue;
     const p = raiderXY(road, r);
-    parts.push(`<g data-raider="${r.id}" class="raider-g${r.breached ? ' breached' : ''}" style="transform:translate(${p.x}px,${p.y}px)">${raiderTop(r.type, 0, 0, r.hp / r.maxHp)}</g>`);
+    const sc = f.raiders.length > 10 ? .8 : 1;
+    parts.push(`<g data-raider="${r.id}" class="raider-g${r.breached ? ' breached' : ''}" style="transform:translate(${p.x}px,${p.y}px) scale(${sc})">${raiderTop(r.type, 0, 0, r.hp / r.maxHp)}</g>`);
   }
   parts.push('</g>');
 
@@ -136,7 +141,7 @@ function patchField(el: SVGSVGElement, s: State): void {
       g = document.createElementNS(NS, 'g') as SVGGElement;
       g.setAttribute('data-raider', String(r.id)); g.setAttribute('class', 'raider-g');
       g.innerHTML = raiderTop(r.type, 0, 0, r.hp / r.maxHp);
-      g.style.transform = `translate(${p.x}px,${p.y}px)`;
+      g.style.transform = `translate(${p.x}px,${p.y}px) scale(${f.raiders.length > 10 ? .8 : 1})`;
       g.style.opacity = '0';
       raidersLayer.append(g);
       requestAnimationFrame(() => { g!.style.opacity = '1'; });
@@ -145,47 +150,56 @@ function patchField(el: SVGSVGElement, s: State): void {
     if (!g) continue;
     if (!r.alive) {
       if (!g.classList.contains('dying')) {
-        g.classList.add('dying');
+        g.classList.add('dying'); g.querySelector('.walker')?.classList.add('dying');
         const puff = document.createElementNS(NS, 'g'); puff.setAttribute('class', 'anim-smoke'); puff.style.transformOrigin = `${p.x}px ${p.y}px`;
         puff.innerHTML = `<circle cx="${p.x}" cy="${p.y}" r="9" fill="var(--smoke)"/>`; fx.append(puff);
         setTimeout(() => { g?.remove(); puff.remove(); }, 700);
       }
       continue;
     }
-    g.style.transform = `translate(${p.x}px,${p.y}px)`;
+    g.style.transform = `translate(${p.x}px,${p.y}px) scale(${f.raiders.length > 10 ? .8 : 1})`;
     g.classList.toggle('breached', r.breached);
-    const bars = g.querySelectorAll('rect');
-    const hpBar = bars[bars.length - 1]; if (hpBar) hpBar.setAttribute('width', String(parseFloat(bars[bars.length - 2]!.getAttribute('width')!) * Math.max(0, r.hp / r.maxHp)));
+    const hpBar = g.querySelector('rect.hp'); const bg = hpBar?.previousElementSibling;
+    if (hpBar && bg) hpBar.setAttribute('width', String(parseFloat(bg.getAttribute('width')!) * Math.max(0, r.hp / r.maxHp)));
+    const w = g.querySelector('.walker');
+    if (w) { const wasHit = f.last.shots.some(sh => sh.targetId === r.id) || (f.last.rally > 0 && r.pos >= road.length - 2); if (wasHit) { w.classList.remove('hit'); void (w as unknown as HTMLElement).getBoundingClientRect(); w.classList.add('hit'); } w.classList.toggle('still', r.breached); }
   }
 
   // Turrets: rotate toward target, flash, ammo count.
   for (const [iid, cell] of Object.entries(s.turretCells)) {
     const g = el.querySelector(`[data-turret="${iid}"]`) as SVGGElement | null; if (!g) continue;
     const shot = f.last.shots.find(sh => sh.turretIid === iid);
+    const turretEl = g.querySelector('.turret') as SVGGElement | null;
+    const t = s.turrets[iid];
     if (shot) {
       const target = f.raiders.find(r => r.id === shot.targetId);
       if (target) { const tp = raiderXY(road, target); const cc = center(cell); ui.angles[iid] = Math.atan2(tp.y - cc.y, tp.x - cc.x) * 180 / Math.PI; }
-      g.classList.remove('firing'); void (g as unknown as HTMLElement).offsetWidth; g.classList.add('firing');
-      const def = s.turrets[iid]?.def;
-      if (def === 'minigun' || def === 'double_minigun') g.querySelectorAll('.barrel g').forEach(b => b.classList.add('anim-spin'));
-    } else {
-      g.classList.remove('firing');
-      g.querySelectorAll('.barrel g').forEach(b => b.classList.remove('anim-spin'));
+      if (turretEl) { const rapid = t && TURRET_COMBAT[t.def].rate >= 4 ? ' rapid' : ''; turretEl.setAttribute('class', 'turret t-track'); void (turretEl as unknown as HTMLElement).getBoundingClientRect(); turretEl.setAttribute('class', `turret t-fire${rapid}`); setTimeout(() => { if (turretEl.getAttribute('class')?.startsWith('turret t-fire')) turretEl.setAttribute('class', 'turret t-track'); }, rapid ? 600 : 320); }
+    } else if (turretEl) {
+      turretEl.setAttribute('class', `turret ${t && t.ammo < C.AMMO_PER_SHOT ? 't-dry' : f.done ? 't-idle' : 't-track'}`);
     }
     const barrel = g.querySelector('.barrel') as SVGGElement | null;
-    if (barrel) barrel.style.transform = `rotate(${ui.angles[iid] ?? -90}deg)`;
+    if (barrel) { barrel.style.setProperty('--a', `${ui.angles[iid] ?? -90}deg`); barrel.style.transform = `rotate(${ui.angles[iid] ?? -90}deg)`; }
     const ammo = el.querySelector(`[data-ammo="${iid}"]`); if (ammo) ammo.textContent = String(s.turrets[iid]?.ammo ?? 0);
   }
 
   // Tracers and rally flash (short-lived).
+  const seen = new Set<string>();
   for (const sh of f.last.shots) {
     const cell = s.turretCells[sh.turretIid]; const target = f.raiders.find(r => r.id === sh.targetId);
     if (cell === undefined || !target) continue;
+    const rapid = TURRET_COMBAT[s.turrets[sh.turretIid]?.def ?? 'scrap_launcher'].rate >= 4;
+    const key = `${sh.turretIid}:${sh.targetId}`; if (rapid && seen.has(key)) continue; seen.add(key);
     const a = center(cell), b = raiderXY(road, target);
-    const line = document.createElementNS(NS, 'line');
-    line.setAttribute('x1', String(a.x)); line.setAttribute('y1', String(a.y)); line.setAttribute('x2', String(b.x)); line.setAttribute('y2', String(b.y));
-    line.setAttribute('stroke', 'var(--flame)'); line.setAttribute('stroke-width', '2'); line.setAttribute('class', 'tracer');
-    fx.append(line); setTimeout(() => line.remove(), 450);
+    const n = rapid ? 4 : 1;
+    for (let k = 0; k < n; k++) {
+      const line = document.createElementNS(NS, 'line');
+      const jx = rapid ? (k % 2 ? 3 : -3) : 0, jy = rapid ? (k < 2 ? -2 : 2) : 0;
+      line.setAttribute('x1', String(a.x)); line.setAttribute('y1', String(a.y)); line.setAttribute('x2', String(b.x + jx)); line.setAttribute('y2', String(b.y + jy));
+      line.setAttribute('stroke', 'var(--flame)'); line.setAttribute('stroke-width', rapid ? '1.2' : '2'); line.setAttribute('class', 'tracer');
+      line.style.animationDelay = `${k * 0.12}s`;
+      fx.append(line); setTimeout(() => line.remove(), 450 + k * 120);
+    }
   }
   if (f.last.rally > 0) {
     const gp = center(cellIndex(GATE));
@@ -209,9 +223,9 @@ function raiderXY(road: ReturnType<typeof pathOf>, r: Raider): { x: number; y: n
   if (r.breached) { const g = center(cellIndex(GATE)); return { x: g.x, y: g.y + 4 }; }
   const i = Math.min(road.length - 1, Math.floor(r.pos)), frac = r.pos - Math.floor(r.pos);
   const a = center(cellIndex(road[i]!)), b = center(cellIndex(road[Math.min(road.length - 1, i + 1)]!));
-  // spread by id so they don't stack
-  const jitter = ((r.id * 7) % 5 - 2) * 4;
-  return { x: a.x + (b.x - a.x) * frac + jitter, y: a.y + (b.y - a.y) * frac + ((r.id * 3) % 3 - 1) * 4 };
+  // spread by id so they don't stack; wider spread for the bigger crews
+  const jitter = ((r.id * 7) % 5 - 2) * 5;
+  return { x: a.x + (b.x - a.x) * frac + jitter, y: a.y + (b.y - a.y) * frac + ((r.id * 3) % 3 - 1) * 5 };
 }
 
 function onFieldTap(e: Event, s: State): void {
@@ -230,31 +244,35 @@ function onFieldTap(e: Event, s: State): void {
     act({ type: 'build_barricade', cell: i });
     return;
   }
-  if (ui.mode === 'place') {
-    if (ui.pick) { if (act({ type: 'place_turret', iid: ui.pick, cell: i })) { ui.pick = null; } return; }
-    if (turretHere) { ui.pick = turretHere; store.refresh(); return; }
-    toast('Pick a turret from the roster first, then tap where it goes.');
+  // Select-then-place: a selected turret (from the roster or the field) goes wherever you tap next.
+  if (ui.pick) {
+    if (turretHere === ui.pick) { ui.pick = null; store.refresh(); return; }          // tap it again: deselect
+    if (turretHere) { ui.pick = turretHere; store.refresh(); return; }                // tap another: switch selection
+    if (placeable(s, i)) { if (act({ type: 'place_turret', iid: ui.pick, cell: i })) ui.pick = null; return; }
+    toast('Turrets stand on open ground beside the road.');
     return;
   }
-  // view: tap a turret → show its range; tap again → sheet
-  if (turretHere) { if (ui.pick === turretHere) openTurretInfo(s.turrets[turretHere]!.def); else { ui.pick = turretHere; store.refresh(); } return; }
+  if (turretHere) { ui.pick = turretHere; store.refresh(); return; }
   ui.pick = null; store.refresh();
 }
 
 function roster(s: State): Node {
   const ts = Object.values(s.turrets);
+  const fighting = !!s.pendingRaid && s.pendingRaid.fight.tick > 0 && !s.pendingRaid.fight.done;
   return h('div.card.stack',
-    h('div.row.between', h('h3', 'Turrets'), h('span.dim.small', 'Buy turrets on the Factory wall')),
+    h('div.row.between', h('h3', 'Turrets'), h('span.dim.small', 'Bought on the Factory wall')),
     ts.length === 0 ? h('div.empty', 'No turrets yet.') :
       ts.map(t => {
         const placed = s.turretCells[t.iid] !== undefined;
         const cs = TURRET_COMBAT[t.def];
-        return h(`div.row.between.small${ui.pick === t.iid ? '.picked' : ''}`,
-          h('span', h('b', TURRETS[t.def].name), h('span.dim', ` · range ${cs.range} · ${cs.damage}×${cs.rate}/tick · `), icon(TURRETS[t.def].ammo, 12), h('span.dim', ` ${t.ammo}`)),
+        const sel = ui.pick === t.iid;
+        return h(`div.row.between.small.roster-row${sel ? '.picked' : ''}`, { onclick: () => { if (fighting) return; ui.pick = sel ? null : t.iid; store.refresh(); } },
+          h('span', h('b', TURRETS[t.def].name), h('span.dim', ` · reach ${cs.range} · ${cs.damage}×${cs.rate}/tick · `), icon(TURRETS[t.def].ammo, 12), h('span.dim', ` ${t.ammo}`),
+            h('div.dim', { style: { fontSize: '11px' } }, placed ? (sel ? 'Selected — tap a cell to move it' : 'On the field') : (sel ? 'Selected — tap a cell to place it' : 'Not placed'))),
           h('div.row',
-            t.ammo < C.AMMO_CAP && s.res[TURRETS[t.def].ammo] > 0 && h('button.btn.sm', { onclick: () => act({ type: 'load_ammo', iid: t.iid, fill: true }) }, 'Fill'),
-            placed && h('button.btn.sm', { onclick: () => act({ type: 'unplace_turret', iid: t.iid }) }, 'Pick up'),
-            h('button.btn.sm', { onclick: () => { ui.mode = 'place'; ui.pick = t.iid; store.refresh(); toast(`Tap a field cell for the ${TURRETS[t.def].name}.`); } }, placed ? 'Move' : 'Place')));
+            t.ammo < C.AMMO_CAP && s.res[TURRETS[t.def].ammo] > 0 && h('button.btn.sm', { onclick: (e: Event) => { e.stopPropagation(); act({ type: 'load_ammo', iid: t.iid, fill: true }); } }, 'Fill'),
+            placed && !fighting && h('button.btn.sm', { onclick: (e: Event) => { e.stopPropagation(); if (ui.pick === t.iid) ui.pick = null; act({ type: 'unplace_turret', iid: t.iid }); } }, 'Pick up'),
+            h('button.btn.sm', { onclick: (e: Event) => { e.stopPropagation(); openTurretInfo(t.def); } }, 'i')));
       }));
 }
 
@@ -270,16 +288,17 @@ export function wallCard(s: State, locked = false): Node {
 }
 
 function wavePreview(s: State): Node {
-  const tier = Math.max(1, s.maxZoneTierReached);
-  const w = waveDef(tier);
-  return h('div.card.stack', h('h3', `Next raid: ${ZONES[tier - 1]!.name} crew`),
-    h('div.row.wrap', w.groups.map(g => h('span.chip', svg(`<svg width="18" height="18" viewBox="-14 -14 28 28">${raiderTop(g.type, 0, 0, 1)}</svg>`), `${g.count} ${RAIDERS[g.type].name}${g.count > 1 ? 's' : ''} · ${g.hp} HP`))),
+  const reached = Math.max(1, s.maxZoneTierReached);
+  return h('div.card.stack', h('h3', 'Who follows you home'),
+    h('p.dim.small', 'A raid matches the zone you were looting when they picked up your trail. Deeper zones, bigger crews.'),
+    ZONES.filter(z => z.tier <= reached).map(z => { const w = waveDef(z.tier); return h('div.row.between.small', h('span', z.name), h('span.dim', w.groups.map(g => `${g.count} ${RAIDERS[g.type].name.toLowerCase()}${g.count > 1 ? 's' : ''} (${g.hp})`).join(' · '))); }),
     h('p.dim.small', 'Raiders enter two per tick at the arrow and walk the road. Turrets shoot whoever is furthest along inside their range; every shot costs ammo.'));
 }
 
 function hint(s: State): Node | null {
-  if (ui.mode === 'place') return h('div.notice', ui.pick ? `Tap a field cell to put the ${TURRETS[s.turrets[ui.pick]?.def ?? 'scrap_launcher'].name} there.` : 'Tap a turret in the roster, or one on the field to move it.');
-  if (ui.mode === 'barricade') return h('div.notice', 'Tap a road cell to build a barricade. Tap a barricade to remove it.');
+  if (ui.mode === 'barricade') return h('div.notice', 'Tap a road cell to build a barricade. Tap a barricade to remove it. Done when finished.');
+  if (ui.pick) return h('div.notice', `${TURRETS[s.turrets[ui.pick]?.def ?? 'scrap_launcher'].name} selected. Tap a highlighted cell to ${s.turretCells[ui.pick] !== undefined ? 'move' : 'place'} it, another turret to switch, or it again to deselect.`);
+  if (Object.values(s.turrets).some(t => s.turretCells[t.iid] === undefined)) return h('div.notice', 'Tap a turret in the roster, then tap where it goes.');
   return null;
 }
 

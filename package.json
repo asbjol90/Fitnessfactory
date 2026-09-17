@@ -10,12 +10,15 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "sim": "tsx scripts/sim.ts",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "defsim": "tsx scripts/defsim.ts",
+    "lab": "vite build -c vite.config.lab.ts"
   },
   "devDependencies": {
     "tsx": "^4.19.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.0",
+    "vite-plugin-singlefile": "^2.3.3",
     "vitest": "^5.0.1"
   }
 }

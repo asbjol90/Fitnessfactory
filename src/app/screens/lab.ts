@@ -32,7 +32,7 @@ function techRow(s: State, id: TechId): Node {
 function zones(s: State): Node {
   const lvl = effectiveLevel(s, 'speed') - 1;
   return h('div.stack',
-    h('p.dim.small', `Your speed level is ${lvl}. Deeper zones pay more but raiders follow you home: the deepest tier you have looted sets the raid strength.`),
+    h('p.dim.small', `Your speed level is ${lvl}. Deeper zones pay more, and the raiders who follow you home come from the zone you looted — bigger crews the deeper you go.`),
     ZONES.map(z => {
       const open = lvl >= z.requiredSpeed;
       const reached = s.maxZoneTierReached >= z.tier;

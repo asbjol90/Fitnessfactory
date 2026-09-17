@@ -7,7 +7,7 @@
 import { C } from './constants';
 import { GEAR_DROP_ZONES, PREMIUM_WEIGHTS, STAT_IDS, ZONES, type Bag, type ResourceId, type StatId } from './data/core';
 import {
-  BARRICADE, DROPS, GATE, MAX_TICKS, RALLY, RAIDERS, SPAWN_PER_TICK, TURRET_COMBAT, cellFromIndex, cellIndex, chebyshev, waveDef, wallDef,
+  BARRICADE, DROPS, GATE, MAX_TICKS, RALLY, RAIDERS, SPAWN_PER_TICK, TURRET_COMBAT, cellFromIndex, cellIndex, inRange, waveDef, wallDef,
   type Cell, type RaiderType,
 } from './data/defence';
 import { BUILDINGS, TURRETS, type BuildingId, type TurretId } from './data/factory';
@@ -51,8 +51,9 @@ export const barricadeable = (s: State, i: number) => {
 };
 
 // ---------------------------------------------------------------- Create
-export function createRaid(s: State, seed: number, now: number): PendingRaid {
-  const tier = Math.max(1, s.maxZoneTierReached);
+/** `zoneTier` is the zone the loot run came from — raiders follow you back from there, not from your deepest-ever run. */
+export function createRaid(s: State, seed: number, now: number, zoneTier: number = Math.max(1, s.maxZoneTierReached)): PendingRaid {
+  const tier = Math.max(1, zoneTier);
   const wave = waveDef(tier);
   const rng = seededRng(seed);
   const raiders: Raider[] = [];
@@ -105,7 +106,7 @@ export function tickRaid(s: State, rally: boolean): void {
     for (let k = 0; k < cs.rate; k++) {
       if (t.ammo < C.AMMO_PER_SHOT) break;
       const target = f.raiders
-        .filter(r => r.alive && r.pos >= 0 && !r.breached && chebyshev(cell, path[Math.min(gateIdx, Math.floor(r.pos))]!) <= cs.range)
+        .filter(r => r.alive && r.pos >= 0 && !r.breached && inRange(cell, path[Math.min(gateIdx, Math.floor(r.pos))]!, cs.range))
         .sort((a, b) => b.pos - a.pos)[0];
       if (!target) break;
       t.ammo -= C.AMMO_PER_SHOT;

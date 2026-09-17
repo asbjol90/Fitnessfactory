@@ -216,7 +216,7 @@ main { flex: 1; padding: 14px 12px calc(var(--tab-h) + var(--safe-b) + 16px); }
 
 /* ---------- defence ---------- */
 .field { width: 100%; height: auto; background: var(--bg); border-radius: var(--radius); border: 1px solid var(--line); touch-action: pan-y; user-select: none; }
-.field .raider-g { transition: transform .68s linear, opacity .3s; }
+.field .raider-g { transition: transform .7s linear, opacity .3s; }
 .field .raider-g.dying { opacity: 0; transition: opacity .4s; }
 .field .raider-g rect { transition: width .3s; }
 .field #gate-hp, .field [data-barricade] rect:last-child { transition: width .3s; }

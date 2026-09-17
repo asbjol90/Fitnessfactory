@@ -184,6 +184,14 @@ function beltMarkup(c: Conveyor, nodes: Placed[], stale: boolean, idx: number, l
     // Shipping lane: down into the lane, west to the gutter, south past the wall, east into the Trader.
     const gutter = PAD / 2 + off / 2;
     pts.push([ax, a.y + ah], [ax, a.y + ah + LANE], [gutter, a.y + ah + LANE], [gutter, b.y + BH / 2 + off], [b.x, b.y + BH / 2 + off]);
+  } else if (c.from.kind === 'stock') {
+    // Out of the Stockpile's side, along its mid-height, then down the target's column.
+    const left = bx < a.x + aw / 2;
+    const sy = a.y + ah / 2 + off;
+    const laneB = b.y - GY + LANE;
+    const start: [number, number] = [left ? a.x : a.x + aw, sy];
+    if (b.y <= a.y + ah + GY + 1) pts.push(start, [bx, sy], [bx, b.y]);   // first row: straight across and down
+    else { const gutter = left ? PAD / 2 + off : W - PAD / 2 + off; pts.push(start, [gutter, sy], [gutter, laneB], [bx, laneB], [bx, b.y]); }
   } else if (b.y > a.y) {
     const laneA = a.y + ah + LANE, laneB = b.y - GY + LANE; // lane under source row / lane just above target row
     if (laneB - laneA < 1) pts.push([ax, a.y + ah], [ax, laneA], [bx, laneA], [bx, b.y]);
@@ -234,7 +242,7 @@ function modeBar(s: State): Node {
 }
 function hint(): Node | null {
   if (ui.mode === 'arrange') return h('div.notice', ui.sel === null ? 'Arrange: tap a slot, then tap where it should go. Belts attached to moved things are removed.' : 'Now tap the destination slot.');
-  if (ui.mode === 'connect') return h('div.notice', !ui.selNode ? 'Connect: tap where the goods come from (Stockpile or a building).' : 'Now tap where they go (a building, a turret, or the Trader).');
+  if (ui.mode === 'connect') return h('div.notice', !ui.selNode ? 'Connect: tap where the goods come from (Stockpile or a building). Tap Connect again when you are done.' : 'Now tap where they go (a building, a turret, or the Trader).');
   return null;
 }
 
@@ -256,7 +264,7 @@ function onFloorTap(e: Event, s: State): void {
     const ref = refFor(s, slot, fixed);
     if (!ref) return;
     if (!ui.selNode) { ui.selNode = ref; ui.sel = slot; store.refresh(); return; }
-    const from = ui.selNode; ui.selNode = null; ui.sel = null; ui.mode = 'view';
+    const from = ui.selNode; ui.selNode = null; ui.sel = null;   // stay in Connect until toggled off
     store.refresh();
     openConnectSheet(s, from, ref);
     return;

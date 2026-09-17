@@ -70,7 +70,7 @@ export const C = {
   // --- Turrets / raids ----------------------------------------------------
   AMMO_PER_SHOT: 1,   // 1.0 CHANGE: was 2 — raids were eating a week of production
   AMMO_LOAD_AMOUNT: 10,   // 1.0 CHANGE: was 20
-  AMMO_CAP: 200,
+  AMMO_CAP: 300,   // 1.0 CHANGE: miniguns fire 4/tick, so magazines hold more
   RAID_GRACE_RUNS: 5,
   RAID_CHANCE: 0.15,  // 1.0 CHANGE: was 0.2 — each raid now costs attention and ammo
   RAID_STEAL_BASE: 0.15,

@@ -18,7 +18,7 @@ export const gateCell = (x: number, y: number, hpFrac: number) =>
   (hpFrac >= 0 ? `<rect x="${x + 10}" y="${y + CELL / 2 - 3}" width="${CELL - 20}" height="6" fill="var(--bg)"/><rect x="${x + 10}" y="${y + CELL / 2 - 3}" width="${(CELL - 20) * Math.max(0, hpFrac)}" height="6" fill="var(--ok)"/>` : '');
 
 export const placeableMark = (x: number, y: number, on: boolean) =>
-  `<rect x="${x + 4}" y="${y + 4}" width="${CELL - 8}" height="${CELL - 8}" rx="6" fill="${on ? 'var(--hazard)' : 'none'}" fill-opacity=".14" stroke="var(--${on ? 'hazard' : 'floor-mark'})" stroke-width="1.5" stroke-dasharray="4 4"/>`;
+  `<rect x="${x + 4}" y="${y + 4}" width="${CELL - 8}" height="${CELL - 8}" rx="6" fill="${on ? 'var(--hazard)' : 'none'}" fill-opacity=".22" stroke="var(--${on ? 'hazard' : 'floor-mark'})" stroke-width="1.5" stroke-dasharray="4 4"/>`;
 export const rangeMark = (x: number, y: number) =>
   `<rect x="${x + 2}" y="${y + 2}" width="${CELL - 4}" height="${CELL - 4}" rx="4" fill="var(--cardio)" fill-opacity=".14"/>`;
 

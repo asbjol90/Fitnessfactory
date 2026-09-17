@@ -332,7 +332,7 @@ function cardioRun(s: State, minutes: number, im: number, zoneId: string, ctx: C
   let text = `${zone.name}: ${parts.filter(Boolean).join(', ')}`;
 
   if (shouldRaid(s, ctx.rng)) {
-    s.pendingRaid = createRaid(s, Math.floor(ctx.rng() * 2 ** 31), ctx.now);
+    s.pendingRaid = createRaid(s, Math.floor(ctx.rng() * 2 ** 31), ctx.now, zone.tier);
     ev.push({ type: 'raid_teaser' });
     ev.push({ type: 'raid_pending' });
     text += ' — raiders followed your tracks. They are at the gate.';

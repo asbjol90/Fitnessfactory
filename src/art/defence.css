@@ -1,0 +1,46 @@
+/* ---------- defence field vocabulary (turrets, raiders) ---------- */
+
+@keyframes t-sweep { 0%,100% { transform:rotate(calc(var(--a) - 14deg)) } 50% { transform:rotate(calc(var(--a) + 14deg)) } }
+@keyframes t-recoil { 0% { transform:translateX(0) } 15% { transform:translateX(-4px) } 100% { transform:translateX(0) } }
+@keyframes t-flash { 0% { opacity:1; transform:scale(1.25) } 100% { opacity:0; transform:scale(.7) } }
+@keyframes roll { 0% { transform:translateY(calc(var(--g) * -1)); opacity:0 } 15% { opacity:.55 } 50% { transform:translateY(0); opacity:1 } 85% { opacity:.55 } 100% { transform:translateY(var(--g)); opacity:0 } }
+@keyframes t-spin { to { transform:rotate(360deg) } }
+@keyframes t-lamp { 0%,100% { opacity:.35 } 50% { opacity:1 } }
+@keyframes shell { 0% { opacity:1; transform:translate(0,0) rotate(0) } 100% { opacity:0; transform:translate(-10px,14px) rotate(160deg) } }
+@keyframes walk-l { 0%,100% { transform:translateY(-2px) } 50% { transform:translateY(2px) } }
+@keyframes walk-r { 0%,100% { transform:translateY(2px) } 50% { transform:translateY(-2px) } }
+@keyframes bob { 0%,100% { transform:translateY(0) } 50% { transform:translateY(-1px) } }
+@keyframes arm-l { 0%,100% { transform:rotate(7deg) } 50% { transform:rotate(-7deg) } }
+@keyframes arm-r { 0%,100% { transform:rotate(-7deg) } 50% { transform:rotate(7deg) } }
+@keyframes hit { 0% { filter:brightness(2.5) } 100% { filter:brightness(1) } }
+@keyframes die { 0% { opacity:1; transform:rotate(0) scale(1) } 100% { opacity:0; transform:rotate(80deg) scale(.7) } }
+
+.turret .muzzle { opacity:0; transform-box:fill-box; transform-origin:center }
+.turret .t-lamp { opacity:0 }
+.turret.t-idle .barrel { animation:t-sweep 6s ease-in-out infinite }
+.turret.t-track .barrel { transition:transform .35s ease-out }
+.turret.t-fire .recoil { animation:t-recoil .25s ease-out }
+.turret.t-fire .muzzle { animation:t-flash .22s ease-out }
+.turret .rod { opacity:0 }
+.turret .rod:nth-child(2) { opacity:.55; transform:translateY(calc(var(--g) * -.5)) } .turret .rod:nth-child(4) { opacity:.55; transform:translateY(calc(var(--g) * .5)) } .turret .rod:nth-child(3) { opacity:1 }
+.turret.t-fire .rod, .turret.t-track .rod { animation:roll .5s linear infinite }
+.turret.t-dry .barrel { transform:rotate(calc(var(--a) + 22deg)) !important; filter:saturate(.4) }
+.turret.t-dry .t-lamp { opacity:1; animation:t-lamp 1.6s ease-in-out infinite }
+.turret .shell { opacity:0 } .turret.t-fire .shell { animation:shell .6s ease-out forwards }
+
+.walker .leg.l { animation:walk-l var(--step,.5s) ease-in-out infinite; transform-box:fill-box; transform-origin:center }
+.walker .leg.r { animation:walk-r var(--step,.5s) ease-in-out infinite; transform-box:fill-box; transform-origin:center }
+.walker .bob { animation:bob var(--step,.5s) ease-in-out infinite }
+.walker .arm.l { animation:arm-l var(--step,.5s) ease-in-out infinite; transform-box:fill-box; transform-origin:top center }
+.walker .arm.r { animation:arm-r var(--step,.5s) ease-in-out infinite; transform-box:fill-box; transform-origin:top center }
+.walker { --step:.6s } .walker.runner { --step:.34s } .walker.brute { --step:1s }
+.walker.hit .bob { animation:hit .3s ease-out }
+.walker.dying { animation:die .55s ease-in forwards; transform-box:fill-box; transform-origin:center }
+.walker.still .leg, .walker.still .arm, .walker.still .bob { animation:none }
+
+/* rapid fire: four flashes and small recoils across the tick */
+.turret.t-fire.rapid .muzzle { animation:t-flash .13s ease-out 4 }
+.turret.t-fire.rapid .recoil { animation:t-recoil-s .13s ease-out 4 }
+@keyframes t-recoil-s { 0% { transform:translateX(0) } 40% { transform:translateX(-2px) } 100% { transform:translateX(0) } }
+.field .tracer { animation:tracer .4s ease-out both }
+.roster-row { cursor:pointer; padding:6px 4px; border-radius:6px }

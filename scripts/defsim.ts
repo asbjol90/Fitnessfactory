@@ -3,7 +3,7 @@
  * placed on the cells that see the most road, full ammo, on each wall tier.
  * Prints repel rate over 40 seeds. Run: npm run defsim
  */
-import { C, GRID_COLS, GRID_ROWS, TURRET_COMBAT, TURRET_IDS, cellFromIndex, cellIndex, chebyshev, initialState, pathOf, placeable, reduce, seededRng, type State, type TurretId } from '../src/engine';
+import { C, GRID_COLS, GRID_ROWS, TURRET_COMBAT, TURRET_IDS, cellFromIndex, cellIndex, inRange, initialState, pathOf, placeable, reduce, seededRng, type State, type TurretId } from '../src/engine';
 
 const T0 = Date.now();
 const AMMO = Number(process.env.AMMO ?? 40);
@@ -14,7 +14,7 @@ function setup(turret: TurretId, n: number, wall: 1 | 2 | 3, zone: number): Stat
   // Best cells: most road cells within range, ties broken toward the gate end of the road.
   const road = pathOf(s);
   const cells = Array.from({ length: GRID_COLS * GRID_ROWS }, (_, i) => i).filter(i => placeable(s, i));
-  const score = (i: number) => { const c = cellFromIndex(i); const r = TURRET_COMBAT[turret].range; return road.reduce((a, p, idx) => a + (chebyshev(c, p) <= r ? 1 + idx / 100 : 0), 0); };
+  const score = (i: number) => { const c = cellFromIndex(i); const r = TURRET_COMBAT[turret].range; return road.reduce((a, p, idx) => a + (inRange(c, p, r) ? 1 + idx / 100 : 0), 0); };
   cells.sort((a, b) => score(b) - score(a));
   for (let k = 0; k < n; k++) {
     const iid = `t${k}`;

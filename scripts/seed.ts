@@ -11,6 +11,7 @@ act({ type: 'build_infra', infra: 'reinforced_roof' }); act({ type: 'build_solar
 const f = Object.values(s.buildings).find(b => b.def === 'furnace')!; act({ type: 'upgrade_building', iid: f.iid, upgrade: 'forge' });
 act({ type: 'research', tech: 'conveyor_systems' }); act({ type: 'research', tech: 'basic_logistics' });
 act({ type: 'build_turret', turret: 'scrap_launcher' }); act({ type: 'build_turret', turret: 'shotgun' });
+s = { ...s, gold: s.gold + 300, res: { ...s.res, iron: s.res.iron + 40, gravel: s.res.gravel + 30, precision_components: s.res.precision_components + 6, hardened_rounds: 60 } }; act({ type: 'upgrade_factory' }); act({ type: 'build_turret', turret: 'minigun' });
 for (const t of Object.values(s.turrets)) { act({ type: 'load_ammo', iid: t.iid }); act({ type: 'load_ammo', iid: t.iid }); }
 const c = Object.values(s.buildings).find(b => b.def === 'crusher')!;
 act({ type: 'add_conveyor', from: { kind: 'stock' }, to: { kind: 'building', iid: f.iid }, resource: 'iron_ore' });
@@ -32,6 +33,7 @@ act({ type: 'upgrade_wall' });
   const beside = (k: number) => cellIndex({ c: road[k]!.c + 1, r: road[k]!.r });
   act({ type: 'place_turret', iid: ids[0]!, cell: beside(2) });
   act({ type: 'place_turret', iid: ids[1]!, cell: cellIndex({ c: road[6]!.c, r: road[6]!.r - 1 }) });
+  if (ids[2]) { act({ type: 'load_ammo', iid: ids[2]!, fill: true }); act({ type: 'place_turret', iid: ids[2]!, cell: cellIndex({ c: road[5]!.c + 1, r: road[5]!.r + 1 }) }); }
   act({ type: 'build_barricade', cell: cellIndex(road[4]!) });
   s = { ...s, pendingRaid: createRaid({ ...s, maxZoneTierReached: 2 }, 4242, now) };
 }

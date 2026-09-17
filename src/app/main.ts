@@ -1,5 +1,6 @@
 import '../styles.css';
 import '../art/machines.css';
+import '../art/defence.css';
 import { h, svg, fmt } from './dom';
 import { store } from './store';
 import { toast, icon } from './ui';
@@ -107,7 +108,7 @@ if (store.migrated) toast('Your v1 factory was carried over.', 'ok', 5000);
 if (!store.state.avatar.id) go('avatar');
 
 // PWA
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+if ('serviceWorker' in navigator && import.meta.env.PROD && import.meta.env.VITE_LAB !== '1') {
   navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => { /* offline is a bonus, not a requirement */ });
 }
 window.addEventListener('hashchange', () => { const id = location.hash.slice(1) as TabId; if (TABS.some(t => t.id === id) && id !== current) go(id); });

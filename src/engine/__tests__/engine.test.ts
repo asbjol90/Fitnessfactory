@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BUILDINGS, C, TURRET_IDS, WALLS, cellIndex, contractProgress, dailyEnergyBalance, effectiveLevel,
+  BUILDINGS, C, TURRET_COMBAT, TURRET_IDS, WALLS, cellIndex, contractProgress, dailyEnergyBalance, effectiveLevel,
   initialState, naturalLevel, pathOf, placeable, reduce, seededRng, upgradeSave, type Action, type State, type Rng,
 } from '../index';
 
@@ -141,7 +141,7 @@ describe('training → resources', () => {
     const { s, rng } = fresh();
     const a = reduce(s, { type: 'log_habit', habit: 'no_junk' }, { now: T0, rng });
     expect(a.error).toBeNull();
-    expect(a.state.research).toBe(4);
+    expect(a.state.research).toBe(5);
     const b = reduce(a.state, { type: 'log_habit', habit: 'no_junk' }, { now: T0 + 1000, rng });
     expect(b.error).toMatch(/Already/);
     const c = reduce(a.state, { type: 'log_habit', habit: 'no_junk' }, { now: T0 + DAY, rng });
@@ -436,6 +436,28 @@ describe('bought contract slots', () => {
     const next = reduce(s, { type: 'tick' }, { now: T0 + 7 * DAY, rng }).state;
     expect(next.contracts.bought).toBe(0);
     expect(next.contracts.slots).toHaveLength(2);
+  });
+});
+
+describe('raid crew follows the run', () => {
+  it('a Ridgeline run brings a Ridgeline crew even after a deeper run', () => {
+    let { s, rng } = fresh(21);
+    s = { ...s, lootRunsCompleted: 20, maxZoneTierReached: 5, avatar: { ...s.avatar, volume: { ...s.avatar.volume, speed: 3000 } } };
+    for (let i = 0; i < 200 && !s.pendingRaid; i++) s = reduce(s, { type: 'log_session', kind: 'cardio', minutes: 20, intensity: 'medium', zone: 'ridgeline' }, { now: T0 + i, rng }).state;
+    expect(s.pendingRaid?.zoneTier).toBe(2);
+    expect(s.pendingRaid?.fight.raiders).toHaveLength(6);
+  });
+});
+
+describe('ammo economy rule', () => {
+  it('one press run feeds any turret for at least 6 ticks of fire', () => {
+    const press = BUILDINGS.munitions_press;
+    const all = [...press.recipes, ...press.upgrades.flatMap(u => u.recipes)];
+    const yieldOf = (res: string) => all.find(r => (r.output as Record<string, number>)[res])!.output[res as 'cartridges']!;
+    const ticks = (res: string, turret: keyof typeof TURRET_COMBAT) => yieldOf(res) / (TURRET_COMBAT[turret].rate * C.AMMO_PER_SHOT);
+    expect(ticks('cartridges', 'assault_rifle')).toBeGreaterThanOrEqual(6);
+    expect(ticks('hardened_rounds', 'minigun')).toBeGreaterThanOrEqual(6);
+    expect(ticks('alloy_rounds', 'double_minigun')).toBeGreaterThanOrEqual(6);
   });
 });
 

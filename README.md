@@ -123,3 +123,13 @@ Everything else is 1:1 with the shipped v1 `index.html`.
 - Each machine has one signature motion plus at most one breathing colour (`src/art/machines.css`). Three states drive the floor: **starved** (no Energy, or no recipe has its inputs in stock — everything stops, glow flickers, red lamp), **run** (produced something today, by belt or by hand — full motion), **idle** (default — slow motion, no emitters). `machineState()` in `derive.ts`.
 - Production burst: on Make, the machine flashes a ring and slides its product out, both on the floor node and in the sheet header, so it's visible without a finger over it.
 - Save version 6 (`lastRunDay` per building).
+
+## Defence pass 2 + backlog (Sept 2026)
+- Turrets, raiders and field redrawn top-down (`src/art/defence2.ts`, `defence.css`): turret states idle (sweep) / track / fire (recoil, flash, rolling minigun barrels) / dry (lamp); raiders with walk cycles, hit flash, death; dressed road, wall and gate.
+- Round reach (Euclidean) for all turrets, Shotgun 1.5. Miniguns fire 4/tick at lower damage; press yields scaled to match (Harden Rounds 24, Alloy Rounds 32 per run; test `ammo economy rule` guards this). Magazine cap 300. Waves re-tuned with `npm run defsim`.
+- Raid crew comes from the zone of the run that triggered it, not the deepest zone ever reached.
+- Select-then-place turret UX on the Defence tab. Big crews draw smaller and spread wider.
+- Palisade gate 6 HP, Stone Wall 15, so no wall tier has an instant breach.
+- Nutrition: balanced meal 2 Research (was 3), no junk 5 (was 4).
+- Connect mode stays on after laying a belt until toggled off. Belts leave the Stockpile from its side. "Sell all" closes the sheet.
+- `npm run lab` builds a single-file preview (`dist-lab/index.html`) seeded from `src/lab-seed.json`; not the deploy build.

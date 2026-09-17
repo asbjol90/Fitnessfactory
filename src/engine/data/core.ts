@@ -58,8 +58,8 @@ export interface HabitDef { id: HabitId; label: string; research: number; dailyC
 export const HABITS: Record<HabitId, HabitDef> = {
   water: { id: 'water', label: 'A glass of water', research: 1, dailyCap: 8 },
   morning_water: { id: 'morning_water', label: 'Started the day with water', research: 2, dailyCap: 1 },
-  no_junk: { id: 'no_junk', label: 'No junk food or candy today', research: 4, dailyCap: 1 },
-  balanced_meal: { id: 'balanced_meal', label: 'A balanced meal', research: 3, dailyCap: 3 },
+  no_junk: { id: 'no_junk', label: 'No junk food or candy today', research: 5, dailyCap: 1 },
+  balanced_meal: { id: 'balanced_meal', label: 'A balanced meal', research: 2, dailyCap: 3 },
 };
 export const HABIT_IDS = Object.keys(HABITS) as HabitId[];
 

@@ -63,4 +63,9 @@ class Store {
   }
 }
 
+// Lab preview builds start from a mid-game save so the whole loop can be seen at once.
+if (import.meta.env.VITE_LAB === '1' && !localStorage.getItem(SAVE_KEY)) {
+  const seed = await import('../lab-seed.json');
+  localStorage.setItem(SAVE_KEY, JSON.stringify(seed.default));
+}
 export const store = new Store();

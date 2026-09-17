@@ -88,7 +88,7 @@ function sellSheet(id: ResourceId): void {
   upd();
   const st = stepper(n, 1, have, v => { n = v; upd(); });
   sheet(close => h('div.stack', h('h2', `Sell ${RESOURCES[id].name}`), h('p.dim.small', `You have ${have}.`), st, line,
-    h('div.seg.c2', h('button.btn', { onclick: () => { n = have; upd(); (st.querySelector('input') as HTMLInputElement).value = String(n); } }, 'All'),
+    h('div.seg.c2', h('button.btn', { onclick: () => { if (act({ type: 'sell', resource: id, units: have })) close(); } }, `Sell all ${have}`),
       h('button.btn.primary', { onclick: () => { if (act({ type: 'sell', resource: id, units: n })) close(); } }, 'Sell'))));
 }
 function buySheet(id: ResourceId): void {
