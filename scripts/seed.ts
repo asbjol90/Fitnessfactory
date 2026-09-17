@@ -35,4 +35,5 @@ act({ type: 'upgrade_wall' });
   act({ type: 'build_barricade', cell: cellIndex(road[4]!) });
   s = { ...s, pendingRaid: createRaid({ ...s, maxZoneTierReached: 2 }, 4242, now) };
 }
+s = { ...s, res: { ...s.res, coal: 0 }, lastRunDay: { [Object.values(s.buildings).find(b => b.def === 'furnace')!.iid]: s.lastDayKey } };
 process.stdout.write(JSON.stringify(s));

@@ -46,7 +46,7 @@ export const CONTRACTS: ContractDef[] = [
   c('prod_components', 'Mill 3 Precision Components', 24, { kind: 'produce', resource: 'precision_components', amount: 3 }, { kind: 'building', building: 'machine_shop' }),
   c('prod_jewelry', 'Finish a piece of Master Jewelry', 35, { kind: 'produce', resource: 'master_jewelry', amount: 1 }, { kind: 'building', building: 'jeweler' }),
   c('prod_alloy', 'Cast 2 Reinforced Alloy', 30, { kind: 'produce', resource: 'reinforced_alloy', amount: 2 }, { kind: 'building', building: 'foundry' }),
-  c('prod_gear', 'Forge one Masterwork Gear', 35, { kind: 'produce', resource: 'masterwork_gear', amount: 1 }, { kind: 'building', building: 'armory' }),
+  c('prod_gear', 'Finish one Masterwork Gear', 35, { kind: 'produce', resource: 'masterwork_gear', amount: 1 }, { kind: 'building', building: 'armory' }),
   c('prod_catalyst', 'Refine 2 Catalyst', 28, { kind: 'produce', resource: 'refined_catalyst', amount: 2 }, { kind: 'building', building: 'chemical_works' }),
   // Zone-gated (3)
   c('venture_quarry', 'Venture into the Quarry or deeper twice', 24, { kind: 'venture', minTier: 3, amount: 2 }, { kind: 'zone', minTierReached: 3 }),

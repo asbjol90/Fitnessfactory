@@ -3,7 +3,7 @@ import { HABIT_IDS, RESOURCE_IDS, STAT_IDS } from './data/core';
 import { C } from './constants';
 import type { BuildingId, InfraId, TurretId } from './data/factory';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 export const SAVE_KEY = 'fitnessfactory_state_v2';
 export const V1_SAVE_KEY = 'fitnessfactory_state_v1';
 
@@ -91,6 +91,8 @@ export interface State {
   barricades: Barricade[];
   turretCells: Record<string, number>;
   pendingRaid: PendingRaid | null;
+  /** dayKey of the last day each building produced something (belt or by hand). Drives the Running look. */
+  lastRunDay: Record<string, string>;
 
   contracts: { slots: ContractSlot[]; completedTotal: number; bought: number };
   weekly: WeeklyCounters;
@@ -128,7 +130,7 @@ export function initialState(now: number): State {
     slots: Array.from({ length: 6 }, () => null),
     buildings: {}, turrets: {}, conveyors: [], nextId: 1,
     lootRunsCompleted: 0, runsSinceSteel: 0, maxZoneTierReached: 0, raidHistory: [],
-    wall: 1, barricades: [], turretCells: {}, pendingRaid: null,
+    wall: 1, barricades: [], turretCells: {}, pendingRaid: null, lastRunDay: {},
     contracts: { slots: [], completedTotal: 0, bought: 0 },
     weekly: emptyWeekly(),
     emergencyUsesThisWeek: 0,

@@ -199,6 +199,7 @@ export function upgradeSave(raw: unknown): State | null {
     s.wall = 1; s.barricades = []; s.turretCells = {}; s.pendingRaid = null;
     s.raidHistory = []; // old tick-based records don't fit the new recap
   }
+  if (!s.lastRunDay) s.lastRunDay = {};
   s.version = SAVE_VERSION;
   return s;
 }

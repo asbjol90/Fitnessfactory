@@ -42,6 +42,7 @@ export function runRecipe(s: State, iid: string, recipeId: string, want: number,
   // Strength stat grows with Labor *spent*, hauling included.
   s.avatar.volume.strength += labor;
 
+  s.lastRunDay[iid] = s.lastDayKey;
   const spend = (s.weekly.spendIn[b.def] ??= { labor: 0, energy: 0 });
   spend.labor += labor;
   spend.energy += recipe.energy * units;

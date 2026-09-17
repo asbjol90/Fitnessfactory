@@ -132,6 +132,8 @@ main { flex: 1; padding: 14px 12px calc(var(--tab-h) + var(--safe-b) + 16px); }
 /* ---------- factory floor ---------- */
 .floor { width: 100%; height: auto; background: var(--bg); border-radius: var(--radius); border: 1px solid var(--line); touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 .floor .lamp rect:nth-child(2) { animation: lampflicker 7s infinite; }
+.floor .node svg, .floor .node { overflow: visible; }
+.floor .node .m-ring, .floor .node .m-out { opacity: 0; }
 @keyframes lampflicker { 0%, 100% { opacity: 1; } 93% { opacity: 1; } 94% { opacity: .5; } 95% { opacity: 1; } 97% { opacity: .7; } 98% { opacity: 1; }}
 .node-sub tspan, .node-sub { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
 .node-label { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
@@ -180,7 +182,6 @@ main { flex: 1; padding: 14px 12px calc(var(--tab-h) + var(--safe-b) + 16px); }
 .anim-sun { animation: sun 24s linear infinite; }
 .anim-shake { animation: shake .4s ease-in-out; }
 .anim-pop { animation: pop .35s ease-out; transform-origin: center; transform-box: fill-box; }
-.anim-idle-off .anim-glow, .anim-idle-off .anim-smoke, .anim-idle-off .anim-flame, .anim-idle-off .anim-piston, .anim-idle-off .anim-hammer, .anim-idle-off .anim-spin, .anim-idle-off .anim-bubble, .anim-idle-off .anim-sparkle, .anim-idle-off .anim-pour { animation-play-state: paused; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }

@@ -117,3 +117,9 @@ Everything else is 1:1 with the shipped v1 `index.html`.
 - Tap a belt on the factory floor → belt sheet (tier, capacity, upgrade, remove); belts have a wide tap area. Tap the wall band → wall sheet. The wall card on Defence stays visible during a pending raid (upgrade locked).
 - Fight rendering is patched in place between ticks, so raiders glide along the road, HP bars shrink smoothly, turrets swing continuously, and kills fade with a puff instead of the whole field redrawing.
 - Breach consequences escalate: each breacher grabs a cut of a raw pile (more breachers → more piles, bigger cuts); 2+ tear down your barricades; 3+ wreck a turret (or a building if you have none); 5+ wreck a building as well.
+
+## Machine art pass (Sept 2026)
+- All 12 machines and 7 upgrade variants redrawn (`src/art/machines.ts`) for silhouette recognition: real-world referents, one colour accent each. Armory renamed Gearsmith (id unchanged).
+- Each machine has one signature motion plus at most one breathing colour (`src/art/machines.css`). Three states drive the floor: **starved** (no Energy, or no recipe has its inputs in stock — everything stops, glow flickers, red lamp), **run** (produced something today, by belt or by hand — full motion), **idle** (default — slow motion, no emitters). `machineState()` in `derive.ts`.
+- Production burst: on Make, the machine flashes a ring and slides its product out, both on the floor node and in the sheet header, so it's visible without a finger over it.
+- Save version 6 (`lastRunDay` per building).

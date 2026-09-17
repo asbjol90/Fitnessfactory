@@ -8,15 +8,20 @@ import { isBuildingId, isTurretId, openBuildingInfo, openTurretInfo } from './in
 import { lossText, wallCard } from './defence';
 import {
   BUILDINGS, BUILDING_IDS, C, INFRA, RESOURCES, SOLAR_PANEL, TURRETS, TURRET_COMBAT, TURRET_IDS, ZONES,
-  activeDrain, activeRecipes, beltCapacity, beltUpgradeCost, buildingBlocker, buildingLabel, dailyEnergyBalance, factorySize, freshRaid, hasTech, haulingLabor, nextFactorySize,
+  activeDrain, activeRecipes, beltCapacity, beltUpgradeCost, buildingBlocker, buildingLabel, dailyEnergyBalance, factorySize, freshRaid, hasTech, haulingLabor, machineState, nextFactorySize,
   slotIsWall, solarCap, staleConveyors, timesAffordable, workshopUnlocked,
   type BuildingInst, type Conveyor, type NodeRef, type RaidRecord, type ResourceId, type ResourceTier, type State, type TurretInst,
 } from '../../engine';
 
 type Mode = 'view' | 'arrange' | 'connect';
 const SEEN_KEY = 'fitnessfactory_seen_raid';
-const ui: { mode: Mode; sel: number | null; selNode: NodeRef | null; seenRaidAt: number } =
-  { mode: 'view', sel: null, selNode: null, seenRaidAt: Number(localStorage.getItem(SEEN_KEY) ?? 0) };
+const ui: { mode: Mode; sel: number | null; selNode: NodeRef | null; seenRaidAt: number; burst: { iid: string; at: number } | null } =
+  { mode: 'view', sel: null, selNode: null, seenRaidAt: Number(localStorage.getItem(SEEN_KEY) ?? 0), burst: null };
+// Production burst: remember the last produce so the floor node and sheet header can flash it.
+store.subscribe((_, events) => {
+  const e = events.find(x => x.type === 'produced');
+  if (e && e.type === 'produced' && e.units > 0) { ui.burst = { iid: e.iid, at: Date.now() }; setTimeout(() => store.refresh(), 1400); }
+});
 const markSeen = (at: number) => { ui.seenRaidAt = at; try { localStorage.setItem(SEEN_KEY, String(at)); } catch { /* ignore */ } };
 
 // Geometry (SVG units)
@@ -85,10 +90,12 @@ export function renderFactory(s: State): Node {
       label = TURRETS[t.def].name;
       sub = `ammo ${t.ammo}/${C.AMMO_CAP}`;
     }
-    const dark = entry.kind === 'building' && s.energy <= 0;
-    const idle = dark ? ' anim-idle-off' : '';
-    parts.push(`<g data-slot="${i}" class="node${idle}">${pad(x, y, BW, BH, sel ? 'sel' : dark ? 'dark' : 'normal')}` +
-      `<g transform="translate(${x},${y}) scale(${BW / 96})">${art}</g>` +
+    const mstate = entry.kind === 'building' ? machineState(s, entry.iid) : 'idle';
+    const burst = entry.kind === 'building' && ui.burst && ui.burst.iid === entry.iid && Date.now() - ui.burst.at < 1400;
+    parts.push(`<g data-slot="${i}" class="node st-${mstate}${burst ? ' burst' : ''}">${pad(x, y, BW, BH, sel ? 'sel' : mstate === 'starved' ? 'dark' : 'normal')}` +
+      `<g transform="translate(${x},${y}) scale(${BW / 96})">${art}` +
+      (entry.kind === 'building' ? `<g class="m-warn"><circle cx="88" cy="8" r="4" fill="var(--danger)"/><path d="M88 5v3M88 10v1" stroke="#000" stroke-width="1.2"/></g><circle class="m-ring" cx="48" cy="34" r="16" fill="none" stroke="var(--hazard)" stroke-width="2"/>` : '') +
+      `</g>` +
       (entry.kind === 'turret' ? ammoBar(x, y, s.turrets[entry.iid]!) : '') +
       `<text x="${x + BW / 2}" y="${y + BH + 12}" text-anchor="middle" class="node-label">${esc(label)}</text>` +
       `<title>${esc(sub)}</title>` +
@@ -310,8 +317,10 @@ function openBuildingSheet(iid: string): void {
     const def = BUILDINGS[b.def];
     const belts = s.conveyors.filter(c => touches(c, 'building', iid));
     return h('div.stack',
-      h('div.row', svg(`<svg width="96" height="64" viewBox="0 0 96 64">${buildingArt(b.def, b.upgrade)}</svg>`),
-        h('div', h('h2', buildingLabel(s, iid)), h('div.dim.small', `${activeDrain(b)} Energy/day upkeep`))),
+      h('div.row', svg(`<svg class="st-${machineState(s, iid)}${ui.burst && ui.burst.iid === iid && Date.now() - ui.burst.at < 1400 ? ' burst' : ''}" width="144" height="96" viewBox="0 -8 96 72">${buildingArt(b.def, b.upgrade)}<circle class="m-ring" cx="48" cy="34" r="16" fill="none" stroke="var(--hazard)" stroke-width="2"/><g class="m-out"><path d="M60 40 L63 33 L77 33 L80 40Z" fill="#9AA7B5"/></g></svg>`),
+        h('div', h('h2', buildingLabel(s, iid)), h('div.dim.small', `${activeDrain(b)} Energy/day upkeep`),
+          machineState(s, iid) === 'starved' && h('div.small.c-strength', 'Starved — missing an input or out of Energy'),
+          machineState(s, iid) === 'run' && h('div.small.c-energy', 'Ran today'))),
       activeRecipes(b).map(r => recipeRow(s, b, r.id)),
       !b.upgrade && def.upgrades.length > 0 && h('div.stack',
         h('h3', 'Choose a path (permanent)'),

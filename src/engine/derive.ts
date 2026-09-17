@@ -1,7 +1,7 @@
 import { C } from './constants';
 import { FACTORY_SIZES, GEAR, STAT_IDS, STAT_THRESHOLDS, TECHS, type StatId, type TechId } from './data/core';
 import { BUILDINGS, TECH_EFFECT, TURRETS, WORKSHOP_UNLOCK, type BuildingDef, type BuildingId, type Gate, type Recipe } from './data/factory';
-import type { BuildingInst, State } from './state';
+import { timesAffordable, type BuildingInst, type State } from './state';
 
 // ---------------------------------------------------------------- Avatar
 /** Natural level 1..5 from cumulative volume. */
@@ -180,4 +180,23 @@ export function haulingLabor(s: State, iid: string, recipe: Recipe, units: numbe
   for (const [id, n] of Object.entries(recipe.inputs) as Array<[ResourceId, number]>) if (!hasInputBelt(s, iid, id)) moved += n * units;
   for (const [id, n] of Object.entries(recipe.output) as Array<[ResourceId, number]>) if (!hasOutputBelt(s, iid, id)) moved += n * units;
   return Math.ceil(moved / C.HAUL_UNITS_PER_LABOR);
+}
+
+// ---------------------------------------------------------------- Machine state (for the floor art)
+export type MachineState = 'idle' | 'run' | 'starved';
+/**
+ * starved: can't run a single unit of any recipe (no Energy, or no recipe has its inputs in stock).
+ * run: produced something today (belt tick or by hand).
+ * idle: otherwise.
+ */
+export function machineState(s: State, iid: string): MachineState {
+  const b = s.buildings[iid];
+  if (!b) return 'idle';
+  const recipes = activeRecipes(b);
+  if (recipes.length > 0) {
+    const canRun = recipes.some(r => timesAffordable(s.res, r.inputs) >= 1 && s.energy >= r.energy);
+    if (!canRun) return 'starved';
+  }
+  if (s.lastRunDay[iid] === s.lastDayKey) return 'run';
+  return 'idle';
 }

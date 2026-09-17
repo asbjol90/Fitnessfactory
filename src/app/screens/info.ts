@@ -35,7 +35,7 @@ export function openBuildingInfo(id: BuildingId): void {
   const gate = d.gate.kind === 'infra' ? `Needs ${d.gate.infra.map(i => i.replace(/_/g, ' ')).join(' and ')}.`
     : d.gate.kind === 'upgrade' ? `Needs the ${BUILDINGS[d.gate.building].upgrades.find(u => u.id === (d.gate as { upgrade: string }).upgrade)?.name}.` : '';
   sheet(() => h('div.stack',
-    h('div.row', svg(`<svg width="96" height="64" viewBox="0 0 96 64">${buildingArt(id, null)}</svg>`),
+    h('div.row', svg(`<svg class="st-run" width="144" height="96" viewBox="0 -8 96 72">${buildingArt(id, null)}</svg>`),
       h('div', h('h2', d.name), h('div.dim.small', `${d.floor === 'main' ? 'Main floor' : 'Workshop floor'} · ${d.drain} Energy/day upkeep`))),
     h('div.card.flat.stack',
       h('h3', 'Recipes'),

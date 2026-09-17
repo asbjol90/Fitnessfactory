@@ -1,4 +1,5 @@
 import '../styles.css';
+import '../art/machines.css';
 import { h, svg, fmt } from './dom';
 import { store } from './store';
 import { toast, icon } from './ui';

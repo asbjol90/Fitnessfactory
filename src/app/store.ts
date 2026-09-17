@@ -1,4 +1,4 @@
-import { reduce, SAVE_KEY, loadState, type Action, type GameEvent, type State } from '../engine';
+import { reduce, SAVE_KEY, V1_SAVE_KEY, loadState, type Action, type GameEvent, type State } from '../engine';
 
 type Listener = (s: State, events: GameEvent[], action: Action | null) => void;
 
@@ -48,8 +48,9 @@ class Store {
   private persist() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.state)); } catch { /* quota or private mode */ }
   }
+  /** Full reset: current save, the migrated v1 save (else it would come back on reload), and UI flags. */
   reset() {
-    localStorage.removeItem(SAVE_KEY);
+    for (const k of [SAVE_KEY, V1_SAVE_KEY, 'fitnessfactory_seen_raid']) localStorage.removeItem(k);
     location.reload();
   }
   export(): string { return JSON.stringify(this.state); }

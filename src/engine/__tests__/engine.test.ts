@@ -410,7 +410,7 @@ describe('round 1 mechanics', () => {
     (v2['turrets'] as Record<string, unknown>)['t9'] = { iid: 't9', def: 'assault_rifle', ammo: 6 };
     (v2['conveyors'] as unknown[]).push({ id: 'c9', resource: 'coke', amount: 5, from: { kind: 'stock' }, to: { kind: 'turret', iid: 't9' } });
     const up = upgradeSave(v2)!;
-    expect(up.version).toBe(5);
+    expect(up.version).toBe(6);
     expect(up.solar).toBe(1);
     expect(up.slots[0]).toBeNull();
     expect(up.buildings['b9']).toBeUndefined();

@@ -157,7 +157,7 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     gate: GRID_LICENSE, upgrades: [],
   },
   armory: {
-    id: 'armory', name: 'Armory', floor: 'workshop',
+    id: 'armory', name: 'Gearsmith', floor: 'workshop',
     cost: cost({ reinforced_alloy: 2, iron: 10, precision_components: 3 }, 112), drain: 4,
     recipes: [
       { id: 'gear_diamond', name: 'Forge Gear (diamond)', inputs: { reinforced_alloy: 2, cut_diamond: 1 }, output: { masterwork_gear: 1 }, labor: 15, energy: 12 },
