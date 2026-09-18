@@ -17,6 +17,7 @@ const c = Object.values(s.buildings).find(b => b.def === 'crusher')!;
 act({ type: 'add_conveyor', from: { kind: 'stock' }, to: { kind: 'building', iid: f.iid }, resource: 'iron_ore' });
 act({ type: 'add_conveyor', from: { kind: 'building', iid: f.iid }, to: { kind: 'trader' }, resource: 'iron' });
 act({ type: 'add_conveyor', from: { kind: 'stock' }, to: { kind: 'building', iid: c.iid }, resource: 'stone' });
+act({ type: 'add_conveyor', from: { kind: 'building', iid: c.iid }, to: { kind: 'stock' }, resource: 'gravel' });
 const t0 = Object.values(s.turrets)[0]!; act({ type: 'add_conveyor', from: { kind: 'stock' }, to: { kind: 'turret', iid: t0.iid }, resource: 'iron_ore' });
 act({ type: 'craft_gear', stat: 'strength' }); act({ type: 'craft_gear', stat: 'strength' });
 s = { ...s, res: { ...s.res, iron: s.res.iron + 40, gravel: s.res.gravel + 10, precision_components: s.res.precision_components + 2 } };

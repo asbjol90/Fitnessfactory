@@ -56,7 +56,7 @@ p { margin: 0; line-height: 1.45; }
 
 /* ---------- shell ---------- */
 #app { display: flex; flex-direction: column; min-height: 100%; max-width: 560px; margin: 0 auto; }
-.topbar { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: repeat(4, 1fr) 34px; gap: 6px; padding: 8px 12px; align-items: center; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.topbar { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: repeat(4, 1fr) 30px 30px; gap: 4px; padding: 8px 10px; align-items: center; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
 .pool { display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: var(--panel); border-radius: 8px; font-family: var(--font-display); font-size: 15px; position: relative; }
 .pool .icon { flex: none; }
 .pool .delta { position: absolute; right: 6px; top: -14px; font-size: 13px; font-weight: 700; animation: rise 1.2s ease-out forwards; pointer-events: none; }
@@ -126,7 +126,7 @@ main { flex: 1; padding: 14px 12px calc(var(--tab-h) + var(--safe-b) + 16px); }
 /* ---------- shop ---------- */
 .shop-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px; border-radius: var(--radius); background: var(--panel); border-top: 4px solid transparent; border-image: repeating-linear-gradient(135deg, var(--hazard) 0 10px, var(--hazard-ink) 10px 20px) 1; }
 .shop-group { text-transform: uppercase; letter-spacing: .1em; font-size: 11px; }
-.gear-btn { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; color: var(--ink-dim); }
+.gear-btn { width: 30px; height: 34px; display: flex; align-items: center; justify-content: center; color: var(--ink-dim); }
 .gear-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; }
 
 /* ---------- factory floor ---------- */

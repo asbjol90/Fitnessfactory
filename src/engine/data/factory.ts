@@ -90,10 +90,11 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     recipes: [{ id: 'coke', name: 'Bake Coke', inputs: { coal: 1 }, output: { coke: 1 }, labor: 2, energy: 3 }],
     gate: { kind: 'none' },
     upgrades: [
-      { id: 'industrial', name: 'Industrial Coker', tagline: 'Runs on power, not people', cost: cost({ coke: 10 }, 25), drain: 4,
-        recipes: [{ id: 'coke', name: 'Bake Coke', inputs: { coal: 1 }, output: { coke: 1 }, labor: 1, energy: 3 }] },
+      // 1.0 CHANGE: Industrial doubles coke per coal (was 1:1) and Byproduct costs 2 Labor (was 1) — before, Byproduct dominated.
+      { id: 'industrial', name: 'Industrial Coker', tagline: 'Two coke per coal, on power', cost: cost({ coke: 10 }, 25), drain: 4,
+        recipes: [{ id: 'coke', name: 'Bake Coke', inputs: { coal: 1 }, output: { coke: 2 }, labor: 1, energy: 3 }] },
       { id: 'byproduct', name: 'Byproduct Coker', tagline: 'Only source of Coal Tar', cost: cost({ coke: 10 }, 25), drain: 2,
-        recipes: [{ id: 'coke', name: 'Bake Coke', inputs: { coal: 1 }, output: { coke: 1 }, labor: 1, energy: 3, bonus: { resource: 'coal_tar', chance: 0.25 } }] },
+        recipes: [{ id: 'coke', name: 'Bake Coke', inputs: { coal: 1 }, output: { coke: 1 }, labor: 2, energy: 3, bonus: { resource: 'coal_tar', chance: 0.25 } }] },
     ],
   },
   munitions_press: {

@@ -10,6 +10,7 @@ import {
   type Fight, type Raider, type RaidOutcome, type State,
 } from '../../engine';
 import { openTurretInfo } from './info';
+import { SFX, soundEnabled } from '../sfx';
 
 type Mode = 'view' | 'barricade';
 const ui: { mode: Mode; pick: string | null; timer: number | null; speed: 1 | 2; rallyArmed: boolean; angles: Record<string, number> } =
@@ -284,7 +285,7 @@ export function wallCard(s: State, locked = false): Node {
       next && h('button.btn.sm', { disabled: locked, onclick: () => act({ type: 'upgrade_wall' }) }, `→ ${next.name}`)),
     next && costChips(s, { res: next.cost, gold: next.gold }),
     locked && h('p.small.c-strength', 'Not with raiders at the gate.'),
-    h('p.dim.small', `A barricade costs ${BARRICADE.labor} Labor + 4 Stone, has ${BARRICADE.hp} HP, and stands until raiders break it. Rally costs ${RALLY.labor} Labor per use, hits for ${RALLY.damage} at the gate, and needs ${RALLY.cooldown} ticks to recover.`));
+    h('p.dim.small', `A barricade costs ${BARRICADE.labor} Labor + 6 Stone, has ${BARRICADE.hp} HP, and stands until raiders break it. Rally costs ${RALLY.labor} Labor per use, hits for ${RALLY.damage} at the gate, and needs ${RALLY.cooldown} ticks to recover.`));
 }
 
 function wavePreview(s: State): Node {
@@ -313,7 +314,24 @@ function step(): void {
   const rally = ui.rallyArmed; ui.rallyArmed = false;
   const err = store.dispatch({ type: 'raid_tick', rally });
   if (err) { stopTimer(); return; }
+  fightSounds(store.state);
   if (store.state.pendingRaid?.fight.done) stopTimer();
+}
+/** One tick of fight audio, budgeted so a big fight stays readable: ≤3 distinct gun voices, one hit or one down, gate, rally, verdict. */
+function fightSounds(s: State): void {
+  if (!soundEnabled()) return;
+  const f = s.pendingRaid?.fight; if (!f) return;
+  const walking = f.raiders.filter(r => r.alive && r.pos >= 0 && !r.breached).length;
+  if (walking) SFX.march(walking);
+  const voices = new Set<string>();
+  for (const sh of f.last.shots) { const def = s.turrets[sh.turretIid]?.def; if (def && voices.size < 3) voices.add(def); }
+  [...voices].forEach((def, i) => setTimeout(() => {
+    if (def === 'scrap_launcher') SFX.mortar(); else if (def === 'shotgun') SFX.shotgun(); else if (def === 'assault_rifle') SFX.rifle(); else if (def === 'minigun') SFX.minigun(); else SFX.doubleMinigun();
+  }, i * 90));
+  if (f.last.kills.length) setTimeout(() => SFX.raiderDown(), 220); else if (f.last.shots.length) setTimeout(() => SFX.hit(), 160);
+  if (f.last.wallHits) SFX.gateHit();
+  if (f.last.rally) SFX.rally();
+  if (f.done) setTimeout(() => (f.done!.repelled ? SFX.repelled() : SFX.breach()), 500);
 }
 function stopTimer(): void { if (ui.timer !== null) { clearInterval(ui.timer); ui.timer = null; } }
 

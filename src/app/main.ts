@@ -11,6 +11,7 @@ import { renderAvatar } from './screens/avatar';
 import { renderTrade } from './screens/trade';
 import { renderLab, settingsSheet } from './screens/lab';
 import { renderDefence } from './screens/defence';
+import { SFX, makeSoundFor, setSoundEnabled, soundEnabled, unlock } from './sfx';
 
 type TabId = 'train' | 'factory' | 'defence' | 'avatar' | 'trade' | 'lab';
 const TABS: Array<{ id: TabId; label: string; path: string; render: (s: State) => Node }> = [
@@ -51,7 +52,9 @@ function renderTop(s: State) {
     const el = h(`div.pool.${p.cls}`, { title: p.key }, icon(p.key === 'labor' ? 'iron' : p.key === 'energy' ? 'refined_catalyst' : p.key, 18), h('span', fmt(s[p.key])));
     poolEls.set(p.key, el);
     return el;
-  }), h('button.gear-btn', { title: 'Settings', onclick: () => settingsSheet() },
+  }), h('button.gear-btn', { title: soundEnabled() ? 'Sound on' : 'Sound off', onclick: () => { setSoundEnabled(!soundEnabled()); if (soundEnabled()) SFX.coin(); render(store.state); } },
+    svg(soundEnabled() ? '<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zM16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/></svg>' : '<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zM17 9l4 6M21 9l-4 6"/></svg>')),
+  h('button.gear-btn', { title: 'Settings', onclick: () => settingsSheet() },
     svg('<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>')));
 }
 function flashPool(key: string, delta: number) {
@@ -78,6 +81,7 @@ function render(s: State) {
 function handleEvents(s: State, events: GameEvent[]) {
   let gold = 0, labor = 0, energy = 0, research = 0;
   for (const e of events) {
+    sfxFor(e);
     switch (e.type) {
       case 'gain': if (e.pool === 'gold') gold += e.amount; else if (e.pool === 'labor') labor += e.amount; else if (e.pool === 'energy') energy += e.amount; else research += e.amount; break;
       case 'sold': gold += e.gold; break;
@@ -101,6 +105,23 @@ function handleEvents(s: State, events: GameEvent[]) {
   void s;
 }
 const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
+function sfxFor(e: GameEvent): void {
+  if (!soundEnabled()) return;
+  switch (e.type) {
+    case 'session': if (e.kind === 'cardio') SFX.logCardio(); else if (e.kind === 'strength') SFX.logStrength(); else SFX.logFlex(); break;
+    case 'loot': if (e.outcome === 'failed') SFX.emptyHanded(); break;
+    case 'habit': SFX.habit(); break;
+    case 'produced': if (e.units > 0) makeSoundFor(store.state.buildings[e.iid]?.def ?? ''); break;
+    case 'conveyor': if (e.op === 'added') SFX.belt(); break;
+    case 'contract_done': SFX.coin(); break;
+    case 'sold': SFX.sell(); break;
+    case 'built': case 'turret_built': SFX.build(); break;
+    case 'demolished': SFX.demolish(); break;
+    case 'raid_pending': SFX.raidAlert(); break;
+  }
+}
+document.addEventListener('pointerdown', () => { if (soundEnabled()) unlock(); }, { passive: true });
+if (soundEnabled()) setSoundEnabled(true);
 
 store.subscribe((s, events) => { render(s); handleEvents(s, events); });
 render(store.state);

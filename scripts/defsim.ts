@@ -3,14 +3,15 @@
  * placed on the cells that see the most road, full ammo, on each wall tier.
  * Prints repel rate over 40 seeds. Run: npm run defsim
  */
-import { C, GRID_COLS, GRID_ROWS, TURRET_COMBAT, TURRET_IDS, cellFromIndex, cellIndex, inRange, initialState, pathOf, placeable, reduce, seededRng, type State, type TurretId } from '../src/engine';
+import { BARRICADE, C, GRID_COLS, ZONES, wallDef, GRID_ROWS, TURRET_COMBAT, TURRET_IDS, cellFromIndex, cellIndex, inRange, initialState, pathOf, placeable, reduce, seededRng, type State, type TurretId } from '../src/engine';
 
 const T0 = Date.now();
-const AMMO = Number(process.env.AMMO ?? 40);
+const AMMO = Number(process.env.AMMO ?? 120);
+const BARRICADES = process.env.BARRICADES !== '0';
 function setup(turret: TurretId, n: number, wall: 1 | 2 | 3, zone: number): State {
   let s = initialState(T0);
   s = reduce(s, { type: 'pick_avatar', id: 'm1_worker', name: 'sim' }, { now: T0, rng: Math.random }).state;
-  s = { ...s, wall, lootRunsCompleted: 20, maxZoneTierReached: zone, labor: 0 };
+  s = { ...s, wall, lootRunsCompleted: 20, maxZoneTierReached: zone, labor: 0, avatar: { ...s.avatar, volume: { ...s.avatar.volume, speed: 3000 } } };
   // Best cells: most road cells within range, ties broken toward the gate end of the road.
   const road = pathOf(s);
   const cells = Array.from({ length: GRID_COLS * GRID_ROWS }, (_, i) => i).filter(i => placeable(s, i));
@@ -21,20 +22,17 @@ function setup(turret: TurretId, n: number, wall: 1 | 2 | 3, zone: number): Stat
     s.turrets[iid] = { iid, def: turret, ammo: AMMO };
     s.turretCells[iid] = cells[k]!;
   }
+  if (BARRICADES) { // max barricades, on the road cells nearest the gate that are allowed
+    const road = pathOf(s); const allowed = wallDef(s.wall).barricades;
+    for (let k = road.length - 3, n = 0; k >= 0 && n < allowed; k -= 2, n++) s.barricades.push({ cell: cellIndex(road[k]!), hp: BARRICADE.hp });
+  }
   return s;
 }
 function fight(s: State, seed: number): boolean {
   const rng = seededRng(seed);
-  let r = reduce(s, { type: 'log_session', kind: 'cardio', minutes: 20, intensity: 'medium', zone: 'outskirts' }, { now: T0, rng });
-  let st = r.state;
-  for (let i = 0; i < 300 && !st.pendingRaid; i++) st = reduce(st, { type: 'log_session', kind: 'cardio', minutes: 20, intensity: 'medium', zone: 'outskirts' }, { now: T0 + i, rng }).state;
-  st = { ...st, maxZoneTierReached: s.maxZoneTierReached };
-  if (!st.pendingRaid) return false;
-  st.pendingRaid = { ...st.pendingRaid, zoneTier: s.maxZoneTierReached };
-  // recreate at the right tier
-  st = { ...st, pendingRaid: null, lootRunsCompleted: 20 };
-  const rr = seededRng(seed + 99);
-  for (let i = 0; i < 300 && !st.pendingRaid; i++) st = reduce(st, { type: 'log_session', kind: 'cardio', minutes: 20, intensity: 'medium', zone: 'outskirts' }, { now: T0 + i, rng: rr }).state;
+  const zoneId = ZONES[s.maxZoneTierReached - 1]!.id;
+  let st: State = { ...s, pendingRaid: null };
+  for (let i = 0; i < 300 && !st.pendingRaid; i++) st = reduce(st, { type: 'log_session', kind: 'cardio', minutes: 20, intensity: 'medium', zone: zoneId }, { now: T0 + i, rng }).state;
   if (!st.pendingRaid) return false;
   let guard = 0;
   while (st.pendingRaid && !st.pendingRaid.fight.done && guard++ < 200) st = reduce(st, { type: 'raid_tick', rally: false }, { now: T0, rng }).state;
@@ -57,4 +55,4 @@ for (let zone = 1; zone <= 5; zone++) {
     console.log(`  ${zone}     ${wall}  | ${row.map(x => x.padEnd(14)).join('| ')}`);
   }
 }
-console.log(`(cells: repel % with 2/3/4 turrets of that type, ${AMMO} ammo each, no rally)`);
+console.log(`(cells: repel % with 2/3/4 turrets of that type, ${AMMO} ammo each, ${BARRICADES ? 'max barricades' : 'no barricades'}, no rally)`);

@@ -108,7 +108,7 @@ function apply(s: State, a: Action, ctx: Ctx, ev: GameEvent[]): void {
       if (s.barricades.length >= wallDef(s.wall).barricades) throw new GameError(`Your wall supports ${wallDef(s.wall).barricades} barricade${wallDef(s.wall).barricades > 1 ? 's' : ''}.`);
       if (!barricadeable(s, a.cell)) throw new GameError('Barricades go on the road, at least two steps from the gate.');
       if (s.labor < BARRICADE.labor) throw new GameError(`Needs ${BARRICADE.labor} Labor.`);
-      if (!hasBag(s.res, BARRICADE.cost)) throw new GameError('Needs 4 Stone.');
+      if (!hasBag(s.res, BARRICADE.cost)) throw new GameError('Needs 6 Stone.');
       subBag(s.res, BARRICADE.cost); s.labor -= BARRICADE.labor; s.avatar.volume.strength += BARRICADE.labor;
       s.barricades.push({ cell: a.cell, hp: BARRICADE.hp });
       ev.push({ type: 'barricade', op: 'built', cell: a.cell });

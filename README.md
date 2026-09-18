@@ -134,3 +134,10 @@ Everything else is 1:1 with the shipped v1 `index.html`.
 - Connect mode stays on after laying a belt until toggled off. Belts leave the Stockpile from its side. "Sell all" closes the sheet.
 - `npm run lab` builds a single-file preview (`dist-lab/index.html`) seeded from `src/lab-seed.json`; not the deploy build.
 - Return belts: a machine can belt its output back to the Stockpile; it moves nothing (outputs already land there) but removes output hauling for that resource. The recipe line names which resources are still hauled.
+
+### Balance pass (Sept 18)
+- Reinforced Wall made every raid trivial (16-cell road). Road shortened to 11 cells and the wall now costs 60 Iron + 40 Gravel + 6 Precision Components + 300 Gold. Zone 3–5 crews heavier (more runners, tougher brutes). Assault Rifle damage 8. Sim default magazine 120 rounds (`AMMO=… npm run defsim`).
+- Ladder on a Palisade: 3 Shotguns hold Quarry, 3 Rifles ~90%; 3 Miniguns hold Hollow ~90%; 3 Doubles hold Reach ~90%. A Stone Wall adds roughly 20–30 points; a Reinforced Wall makes two mid turrets a coin-flip at Quarry, not a certainty.
+- Coke Oven paths: Industrial makes 2 Coke per Coal (power-hungry); Byproduct stays 1:1 with tar but costs 2 Labor.
+- Sound: synthesised SFX (`src/app/sfx.ts`), off by default, speaker toggle in the top bar. Fight audio is budgeted per tick.
+- Second pass after play: barricades 8 HP (were 15), 10 Labor + 6 Stone, max 1/1/2 by wall; gate HP 6/12/20; Reinforced Wall road is a single bend like the Stone Wall (its edge is the gate and two barricades, not a maze); Quarry/Hollow crews heavier again. Sim now places max barricades (`BARRICADES=0` to disable). Ladder: Quarry needs 3 Miniguns or 4 Shotguns on a Palisade, 3 Shotguns on a Stone Wall; on a Reinforced Wall a Shotgun + Rifle pair is a coin-flip.
